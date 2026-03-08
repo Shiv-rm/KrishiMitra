@@ -1,9 +1,12 @@
 {
+  "type":"module",
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "geotiff": "^3.0.4",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "request-response": "^0.1.2"
   }
 }
+

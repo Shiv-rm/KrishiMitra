@@ -19,7 +19,7 @@ function debounce(func, delay) {
 function success(position) {
     latitude = String(position.coords.latitude);
     longitude = String(position.coords.longitude);
-    const dsendtobackend=debounce(sendtobackend,300);
+    const dsendtobackend=debounce(sendtobackend,500);
     dsendtobackend(latitude,longitude);
 }
 
