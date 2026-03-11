@@ -1,8 +1,9 @@
-import express from 'express'
-import cors from 'cors'
-import { fromArrayBuffer } from 'geotiff';
-import fs from 'fs';
-import csv from 'csv-parser'; 
+import express from "express"
+import cors from "cors"
+import { fromArrayBuffer } from "geotiff"
+import fs from "fs"
+import csv from "csv-parser"
+import { spawn } from "child_process"
 
 const app = express()
 const port = 3000
@@ -20,11 +21,11 @@ async function loadNutrientData() {
         const state = row.State.trim().toUpperCase();
         data[state] = {
           N: estimateNutrient(+row.n_High, +row.n_Medium, +row.n_Low,
-               { high: 700, medium: 420, low: 140 }),
+            { high: 700, medium: 420, low: 140 }),
           P: estimateNutrient(+row.p_High, +row.p_Medium, +row.p_Low,
-               { high: 35, medium: 17, low: 5 }),
+            { high: 35, medium: 17, low: 5 }),
           K: estimateNutrient(+row.k_High, +row.k_Medium, +row.k_Low,
-               { high: 350, medium: 194, low: 54 })
+            { high: 350, medium: 194, low: 54 })
         };
       })
       .on('end', () => resolve(data));
@@ -36,12 +37,12 @@ function estimateNutrient(highPct, mediumPct, lowPct, ranges) {
   if (total === 0) return ranges.medium; // fallback
   return Math.round(
     ((highPct / total) * ranges.high +
-     (mediumPct / total) * ranges.medium +
-     (lowPct / total) * ranges.low)
+      (mediumPct / total) * ranges.medium +
+      (lowPct / total) * ranges.low)
   );
 }
 
-// Reverse geocode lat/lon → state using Open-Meteo geocoding or nominatim
+// Reverse geocode lat/lon -> state using Open-Meteo geocoding or nominatim
 async function getStateFromCoords(lat, lon) {
   try {
     const res = await fetch(
@@ -61,7 +62,7 @@ async function getStateFromCoords(lat, lon) {
 // Main function
 const nutrientData = await loadNutrientData();
 
-// Temporary test — bypass geocoding entirely
+// Temporary test - bypass geocoding entirely
 async function getNPK(lat, lon) {
   const state = await getStateFromCoords(lat, lon);
   if (!state || !nutrientData[state]) {
@@ -71,13 +72,13 @@ async function getNPK(lat, lon) {
 }
 
 function debounce(func, delay) {
-    let timeout;
-    return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
 }
 async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (!depth.endsWith("cm")) depth += "cm";
@@ -102,7 +103,7 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (preview.trimStart().startsWith("<"))
     throw new Error(`WCS error: ${preview}`);
 
-  // ✅ use named import directly, no dynamic import
+  // use named import directly, no dynamic import
   const tiff = await fromArrayBuffer(buffer);
   const image = await tiff.getImage();
   const rasters = await image.readRasters();
@@ -120,8 +121,8 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
 }
 async function getph(latitude, longitude) {
   getSoilPhWCS(latitude, longitude, "0-5cm")
-  .then(ph => console.log(`Soil pH: ${ph}`))
-  .catch(err => console.error("Error:", err));
+    .then(ph => console.log(`Soil pH: ${ph}`))
+    .catch(err => console.error("Error:", err));
 }
 
 
@@ -129,12 +130,12 @@ async function getClimateAverages(lat, lon) {
   const now = new Date();
   const month = now.getMonth(); // 0-indexed
 
-  const monthKeys = ["JAN","FEB","MAR","APR","MAY","JUN",
-                     "JUL","AUG","SEP","OCT","NOV","DEC"];
-  const daysInMonth = [31,28,31,30,31,30,31,31,30,31,30,31];
+  const monthKeys = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
   const monthKey = monthKeys[month];
-  const days     = daysInMonth[month];
+  const days = daysInMonth[month];
 
   const url =
     `https://power.larc.nasa.gov/api/temporal/climatology/point?` +
@@ -148,26 +149,92 @@ async function getClimateAverages(lat, lon) {
   if (!res.ok) throw new Error(`NASA POWER error: ${res.status}`);
 
   const data = await res.json();
-  const params = data.properties.parameter; // ✅ correct path
+  const params = data.properties.parameter; // correct path
 
   return {
     temperature: Math.round(params.T2M[monthKey] * 100) / 100,
-    humidity:    Math.round(params.RH2M[monthKey] * 100) / 100,
-    // ✅ multiply mm/day by days in month to get mm/month
-    rainfall:    Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
+    humidity: Math.round(params.RH2M[monthKey] * 100) / 100,
+    // multiply mm/day by days in month to get mm/month
+    rainfall: Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
   };
 }
 
 
-app.post('/post', (req, res) => {
-  const data = req.body;
-  console.log("Latitude : " + data.Latitude + " Longitude : " + data.Longitude);
-  const dgetph=debounce(getph,300);
-  dgetph(data.Latitude,data.Longitude)
-  res.json({
-    Processed: "The data has successfully been received !"
+async function predictCrop(data) {
+  return new Promise((resolve, reject) => {
+    const pythonProcess = spawn('./venv/bin/python3', ['predict.py']);
+    let result = "";
+    let error = "";
+
+    pythonProcess.stdin.write(JSON.stringify(data));
+    pythonProcess.stdin.end();
+
+    pythonProcess.stdout.on('data', (data) => {
+      result += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error("Python Error Details:", error);
+        reject(error.trim() || `Python process exited with code ${code}`);
+      } else {
+        // If code is 0, we take stdout as the result
+        resolve(result.trim());
+      }
+    });
   });
-})
+}
+
+app.post('/post', async (req, res) => {
+  const { Latitude, Longitude } = req.body;
+  console.log(`Latitude: ${Latitude}, Longitude: ${Longitude}`);
+
+  try {
+    // 1. Get NPK values
+    const npk = await getNPK(Latitude, Longitude);
+    console.log("NPK Data:", npk);
+
+    // 2. Get pH value
+    const ph = await getSoilPhWCS(Latitude, Longitude);
+    console.log(`Soil pH: ${ph}`);
+
+    // 3. Get Climate Data (Temperature, Humidity, Rainfall)
+    const climate = await getClimateAverages(Latitude, Longitude);
+    console.log("Climate Data:", climate);
+
+    // 4. Predict Crop
+    const predictionData = {
+      N: npk.N,
+      P: npk.P,
+      K: npk.K,
+      temperature: climate.temperature,
+      humidity: climate.humidity,
+      ph: ph,
+      rainfall: climate.rainfall
+    };
+
+    const recommendedCrop = await predictCrop(predictionData);
+    console.log("Recommended Crop:", recommendedCrop);
+
+    // Return all data to the frontend
+    res.json({
+      Processed: "Success",
+      npk: npk,
+      ph: ph,
+      climate: climate,
+      recommendation: recommendedCrop
+    });
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    res.status(500).json({ error: "Failed to gather data" });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

@@ -16,11 +16,12 @@ function debounce(func, delay) {
         }, delay);
     };
 }
+const dsendtobackend = debounce(sendtobackend, 2000); // 2 second delay to be safe
+
 function success(position) {
-    latitude = String(position.coords.latitude);
-    longitude = String(position.coords.longitude);
-    const dsendtobackend=debounce(sendtobackend,500);
-    dsendtobackend(latitude,longitude);
+    const latitude = String(position.coords.latitude);
+    const longitude = String(position.coords.longitude);
+    dsendtobackend(latitude, longitude);
 }
 
 async function sendtobackend(latitude, longitude) {

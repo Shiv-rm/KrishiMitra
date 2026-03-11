@@ -1,12 +1,30 @@
 {
+  "name": "krishimitra",
+  "version": "1.0.0",
+  "description": "",
+  "main": "backend.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shiv-rm/KrishiMitra.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "type": "module",
+  "bugs": {
+    "url": "https://github.com/Shiv-rm/KrishiMitra/issues"
+  },
+  "homepage": "https://github.com/Shiv-rm/KrishiMitra#readme",
   "dependencies": {
     "axios": "^1.13.6",
     "cors": "^2.8.6",
     "csv-parser": "^3.2.0",
     "express": "^5.2.1",
-    "geotiff": "^3.0.4",
-    "onnxruntime-node": "^1.20.0",
+    "geotiff": "^3.0.5",
+    "onnxruntime-node": "^1.24.3",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "request-response": "^0.1.2"
