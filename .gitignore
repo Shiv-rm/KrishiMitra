@@ -1,0 +1,78 @@
+# ========================
+# Node.js / npm
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+
+# ========================
+# Vite / Frontend Build
+# ========================
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual Environment
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+*.egg
+MANIFEST
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# ========================
+# ML Model & Data Files
+# (Uncomment if you want to exclude large binaries from git)
+# ========================
+# backend/*.pkl
+# backend/*.csv
+
+# ========================
+# Environment Variables
+# ========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========================
+# OS / Editor
+# ========================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ========================
+# Logs
+# ========================
+logs/
+*.log

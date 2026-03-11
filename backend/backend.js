@@ -2,14 +2,21 @@ import express from 'express'
 import cors from 'cors'
 import { fromArrayBuffer } from 'geotiff';
 import fs from 'fs';
-import csv from 'csv-parser'; 
+import csv from 'csv-parser';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const execPromise = promisify(exec);
 
 const app = express()
 const port = 3000
 
 app.use(express.json())
 app.use(cors())
-app.use(express.static('static'))
+// Static serving handled by Vite in development
 
 async function loadNutrientData() {
   return new Promise((resolve) => {
@@ -118,11 +125,8 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
 
   return Math.round((median / 10) * 100) / 100;
 }
-async function getph(latitude, longitude) {
-  getSoilPhWCS(latitude, longitude, "0-5cm")
-  .then(ph => console.log(`Soil pH: ${ph}`))
-  .catch(err => console.error("Error:", err));
-}
+// Soil pH fetch handled directly in /post route
+
 
 
 async function getClimateAverages(lat, lon) {
@@ -159,15 +163,74 @@ async function getClimateAverages(lat, lon) {
 }
 
 
-app.post('/post', (req, res) => {
+
+
+app.post('/post', async (req, res) => {
   const data = req.body;
-  console.log("Latitude : " + data.Latitude + " Longitude : " + data.Longitude);
-  const dgetph=debounce(getph,300);
-  dgetph(data.Latitude,data.Longitude)
-  res.json({
-    Processed: "The data has successfully been received !"
-  });
+  const lat = parseFloat(data.Latitude);
+  const lon = parseFloat(data.Longitude);
+
+  console.log(`Latitude: ${lat}, Longitude: ${lon}`);
+
+  try {
+    // Fetch all required data in parallel
+    const [npk, climate, ph] = await Promise.all([
+      getNPK(lat, lon),
+      getClimateAverages(lat, lon),
+      getSoilPhWCS(lat, lon).catch(err => {
+        console.warn("Soil pH fetch failed, falling back to 7.0:", err.message);
+        return 7.0; // fallback pH
+      })
+    ]);
+
+    const result = {
+      N: npk.N,
+      P: npk.P,
+      K: npk.K,
+      temperature: climate.temperature,
+      humidity: climate.humidity,
+      rainfall: climate.rainfall,
+      ph: ph,
+      location_source: npk.source
+    };
+
+    console.log("Aggregated Data:", result);
+
+    // Call Python script for crop prediction
+    // Feature order matches training: N, P, K, temperature, humidity, ph, rainfall
+    const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
+    const scriptPath = path.join(__dirname, 'predict.py');
+    const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
+
+    try {
+      const { stdout, stderr } = await execPromise(`"${pythonPath}" "${scriptPath}" ${args}`);
+
+      if (stderr) {
+        console.error("Python Error:", stderr);
+      }
+
+      const recommendation = stdout.trim();
+      console.log("Model Recommendation:", recommendation);
+
+      res.json({
+        ...result,
+        recommendation: recommendation
+      });
+    } catch (predictError) {
+      console.error("Prediction failed:", predictError);
+      res.json({
+        ...result,
+        recommendation: "Error in prediction model",
+        error: predictError.message
+      });
+    }
+
+  } catch (error) {
+    console.error("Error in /post processing:", error);
+    res.status(500).json({ error: "Failed to gather all parameters." });
+  }
 })
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
