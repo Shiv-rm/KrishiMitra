@@ -1,12 +1,14 @@
 {
-  "type":"module",
+  "type": "module",
   "dependencies": {
+    "axios": "^1.13.6",
     "cors": "^2.8.6",
+    "csv-parser": "^3.2.0",
     "express": "^5.2.1",
     "geotiff": "^3.0.4",
+    "onnxruntime-node": "^1.20.0",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "request-response": "^0.1.2"
   }
 }
-

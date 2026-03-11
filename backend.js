@@ -1,7 +1,8 @@
 import express from 'express'
 import cors from 'cors'
 import { fromArrayBuffer } from 'geotiff';
-
+import fs from 'fs';
+import csv from 'csv-parser'; 
 
 const app = express()
 const port = 3000
@@ -10,6 +11,64 @@ app.use(express.json())
 app.use(cors())
 app.use(express.static('static'))
 
+async function loadNutrientData() {
+  return new Promise((resolve) => {
+    const data = {};
+    fs.createReadStream('./Nutrient.csv')
+      .pipe(csv())
+      .on('data', (row) => {
+        const state = row.State.trim().toUpperCase();
+        data[state] = {
+          N: estimateNutrient(+row.n_High, +row.n_Medium, +row.n_Low,
+               { high: 700, medium: 420, low: 140 }),
+          P: estimateNutrient(+row.p_High, +row.p_Medium, +row.p_Low,
+               { high: 35, medium: 17, low: 5 }),
+          K: estimateNutrient(+row.k_High, +row.k_Medium, +row.k_Low,
+               { high: 350, medium: 194, low: 54 })
+        };
+      })
+      .on('end', () => resolve(data));
+  });
+}
+
+function estimateNutrient(highPct, mediumPct, lowPct, ranges) {
+  const total = highPct + mediumPct + lowPct;
+  if (total === 0) return ranges.medium; // fallback
+  return Math.round(
+    ((highPct / total) * ranges.high +
+     (mediumPct / total) * ranges.medium +
+     (lowPct / total) * ranges.low)
+  );
+}
+
+// Reverse geocode lat/lon → state using Open-Meteo geocoding or nominatim
+async function getStateFromCoords(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`,
+      { headers: { 'User-Agent': 'KrishiMitra/1.0' }, signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    return data.address?.state?.toUpperCase() ?? null;
+  } catch {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+    );
+    const data = await res.json();
+    return data.principalSubdivision?.toUpperCase() ?? null;
+  }
+}
+// Main function
+const nutrientData = await loadNutrientData();
+
+// Temporary test — bypass geocoding entirely
+async function getNPK(lat, lon) {
+  const state = await getStateFromCoords(lat, lon);
+  if (!state || !nutrientData[state]) {
+    return { N: 280, P: 15, K: 150, source: "national_average" };
+  }
+  return { ...nutrientData[state], source: `state_estimate:${state}` };
+}
 
 function debounce(func, delay) {
     let timeout;
