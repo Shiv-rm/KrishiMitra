@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KrishiMitra – Register</title>
+  <meta name="description" content="Create your KrishiMitra account. Join thousands of farmers using AI-powered crop recommendations." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/global.css" />
+  <link rel="stylesheet" href="/src/pages/login/login.css" />
+  <link rel="stylesheet" href="/src/pages/register/register.css" />
+</head>
+<body class="login-body">
+
+  <div id="login-app">
+
+    <!-- Language Toggle -->
+    <div class="lang-toggle login-lang" role="group" aria-label="Language switcher">
+      <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
+      <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
+    </div>
+
+    <!-- Illustration -->
+    <!-- <div class="login-illustration" aria-hidden="true">
+      <div class="illus-circle">
+        <span class="illus-icon">🌱</span>
+      </div>
+    </div> -->
+
+    <!-- Brand -->
+    <div class="login-brand">
+      <h1>KrishiMitra</h1>
+      <p class="login-greeting" data-i18n="regGreeting">Grow smarter with KrishiMitra</p>
+    </div>
+
+    <!-- Wizard Card -->
+    <div class="card login-card reg-card">
+
+      <h2 data-i18n="regTitle">Create Your Account</h2>
+      <p class="login-subtitle" data-i18n="regSubtitle">Join thousands of farmers using KrishiMitra</p>
+
+      <!-- Step indicator -->
+      <div class="step-indicator" aria-label="Registration steps">
+        <div class="step active" id="step-dot-1">
+          <div class="step-dot"><span>1</span></div>
+          <div class="step-label" data-i18n="regStep1">Personal Info</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step-dot-2">
+          <div class="step-dot"><span>2</span></div>
+          <div class="step-label" data-i18n="regStep2">Farm Details</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step-dot-3">
+          <div class="step-dot"><span>3</span></div>
+          <div class="step-label" data-i18n="regStep3">Set Password</div>
+        </div>
+      </div>
+
+      <!-- Error banner -->
+      <div id="reg-error" class="login-error hidden" role="alert"></div>
+
+      <!-- ── STEP 1 : Personal Info ─────────────────────────────────── -->
+      <div class="reg-step active" id="reg-step-1">
+        <div class="form-group" id="grp-name">
+          <label for="full-name" data-i18n="regFullName">Full Name</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">👤</span> -->
+            <input type="text" id="full-name" name="fullName" autocomplete="name"
+              data-i18n-placeholder="regFullNamePh"
+              placeholder="Enter your full name" required />
+          </div>
+          <span class="field-error" id="name-error"></span>
+        </div>
+
+        <div class="form-group" id="grp-phone">
+          <label for="reg-phone" data-i18n="regPhone">Mobile Number</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">📱</span> -->
+            <input type="tel" id="reg-phone" name="phone" inputmode="numeric"
+              maxlength="10" autocomplete="tel"
+              data-i18n-placeholder="regPhonePh"
+              placeholder="Enter your 10-digit mobile number" required />
+          </div>
+          <span class="field-error" id="reg-phone-error"></span>
+        </div>
+
+        <div class="form-group" id="grp-state">
+          <label for="state" data-i18n="regState">State</label>
+          <div class="input-wrapper select-wrapper">
+            <!-- <span class="input-icon">📍</span> -->
+            <select id="state" name="state" required>
+              <option value="" data-i18n="regStatePh">Select your state</option>
+              <option value="AP">Andhra Pradesh</option>
+              <option value="AR">Arunachal Pradesh</option>
+              <option value="AS">Assam</option>
+              <option value="BR">Bihar</option>
+              <option value="CG">Chhattisgarh</option>
+              <option value="GA">Goa</option>
+              <option value="GJ">Gujarat</option>
+              <option value="HR">Haryana</option>
+              <option value="HP">Himachal Pradesh</option>
+              <option value="JH">Jharkhand</option>
+              <option value="KA">Karnataka</option>
+              <option value="KL">Kerala</option>
+              <option value="MP">Madhya Pradesh</option>
+              <option value="MH">Maharashtra</option>
+              <option value="MN">Manipur</option>
+              <option value="ML">Meghalaya</option>
+              <option value="MZ">Mizoram</option>
+              <option value="NL">Nagaland</option>
+              <option value="OD">Odisha</option>
+              <option value="PB">Punjab</option>
+              <option value="RJ">Rajasthan</option>
+              <option value="SK">Sikkim</option>
+              <option value="TN">Tamil Nadu</option>
+              <option value="TS">Telangana</option>
+              <option value="TR">Tripura</option>
+              <option value="UP">Uttar Pradesh</option>
+              <option value="UK">Uttarakhand</option>
+              <option value="WB">West Bengal</option>
+            </select>
+            <span class="select-chevron">▾</span>
+          </div>
+          <span class="field-error" id="state-error"></span>
+        </div>
+
+        <button type="button" class="primary-btn login-submit reg-next" id="next-1" data-i18n="regNext">Next</button>
+      </div>
+
+      <!-- ── STEP 2 : Farm Details ──────────────────────────────────── -->
+      <div class="reg-step hidden" id="reg-step-2">
+        <div class="form-group" id="grp-district">
+          <label for="district" data-i18n="regDistrict">District / Taluka</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">🏘️</span> -->
+            <input type="text" id="district" name="district"
+              data-i18n-placeholder="regDistrictPh"
+              placeholder="Enter your district or taluka" required />
+          </div>
+          <span class="field-error" id="district-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="village" data-i18n="regVillage">Village / Area</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">🌿</span> -->
+            <input type="text" id="village" name="village"
+              data-i18n-placeholder="regVillagePh"
+              placeholder="Enter your village or area" />
+          </div>
+        </div>
+
+        <!-- Land size + unit on same row -->
+        <div class="form-group" id="grp-land">
+          <label for="land-size" data-i18n="regLandSize">Land Size</label>
+          <div class="land-row">
+            <div class="input-wrapper land-input">
+              <!-- <span class="input-icon">🌾</span> -->
+              <input type="number" id="land-size" name="landSize" min="0.1" step="0.1"
+                data-i18n-placeholder="regLandSizePh"
+                placeholder="e.g. 2.5" required />
+            </div>
+            <div class="input-wrapper select-wrapper land-unit">
+              <select id="land-unit" name="landUnit">
+                <option value="acres"   data-i18n="regAcres">Acres</option>
+                <option value="hectares" data-i18n="regHectares">Hectares</option>
+              </select>
+              <!-- <span class="select-chevron">▾</span> -->
+            </div>
+          </div>
+          <span class="field-error" id="land-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="crop-type" data-i18n="regCropType">Primary Crop Type</label>
+          <div class="input-wrapper select-wrapper">
+            <!-- <span class="input-icon">🌻</span> -->
+            <select id="crop-type" name="cropType">
+              <option value="" data-i18n="regCropTypePh">Select crop type</option>
+              <option value="grain"   data-i18n="regCropGrain">Grain / Cereal</option>
+              <option value="veg"     data-i18n="regCropVeg">Vegetables</option>
+              <option value="fruit"   data-i18n="regCropFruit">Fruits</option>
+              <option value="cash"    data-i18n="regCropCash">Cash Crops</option>
+              <option value="other"   data-i18n="regCropOther">Other</option>
+            </select>
+            <!-- <span class="select-chevron">▾</span> -->
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="back-btn" id="back-2" data-i18n="regBack">Back</button>
+          <button type="button" class="primary-btn reg-next" id="next-2" data-i18n="regNext">Next</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 3 : Set Password ──────────────────────────────────── -->
+      <div class="reg-step hidden" id="reg-step-3">
+        <div class="form-group" id="grp-password">
+          <label for="reg-password" data-i18n="regPassword">Password</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">🔒</span> -->
+            <input type="password" id="reg-password" name="password"
+              autocomplete="new-password"
+              data-i18n-placeholder="regPasswordPh"
+              placeholder="Create a password (min. 6 characters)" required />
+            <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password">
+              <!-- <span id="eye-icon-1">👁</span> -->
+            </button>
+          </div>
+
+          <!-- Password strength bar -->
+          <div class="strength-bar-wrap">
+            <div class="strength-bar" id="strength-bar"></div>
+          </div>
+          <div class="strength-label" id="strength-label"></div>
+          <span class="field-error" id="password-error"></span>
+        </div>
+
+        <div class="form-group" id="grp-confirm">
+          <label for="confirm-password" data-i18n="regConfirmPassword">Confirm Password</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">🔑</span> -->
+            <input type="password" id="confirm-password" name="confirmPassword"
+              autocomplete="new-password"
+              data-i18n-placeholder="regConfirmPasswordPh"
+              placeholder="Re-enter your password" required />
+            <button type="button" class="toggle-pw" id="toggle-confirm" aria-label="Toggle confirm password">
+              <!-- <span id="eye-icon-2">👁</span> -->
+            </button>
+          </div>
+          <span class="field-error" id="confirm-error"></span>
+        </div>
+
+        <!-- Terms -->
+        <label class="terms-label" id="grp-terms">
+          <input type="checkbox" id="terms" name="terms" />
+          <span class="custom-checkbox"></span>
+          <span data-i18n="regTerms">I agree to the Terms &amp; Conditions</span>
+        </label>
+        <span class="field-error" id="terms-error"></span>
+
+        <div class="btn-row">
+          <button type="button" class="back-btn" id="back-3" data-i18n="regBack">Back</button>
+          <button type="button" class="primary-btn login-submit" id="reg-submit">
+            <span data-i18n="regSubmit">Create Account</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Already have account -->
+      <p class="register-prompt" style="margin-top: 20px;">
+        <span data-i18n="regHaveAccount">Already have an account?</span>
+        <a href="./login.html" class="register-link" data-i18n="regLogin">Login here</a>
+      </p>
+
+    </div><!-- /card -->
+
+    <footer>
+      <p data-i18n="footer">© 2026 KrishiMitra. Advanced Agricultural Intelligence.</p>
+    </footer>
+
+  </div><!-- /login-app -->
+
+  <script type="module" src="/src/pages/register/register.js"></script>
+</body>
+</html>

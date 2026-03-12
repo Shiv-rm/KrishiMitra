@@ -1,5 +1,5 @@
-import './style.css';
-import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n.js';
+import './styles/global.css';
+import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n/i18n.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const statusDisplay    = document.getElementById("status-message");

@@ -1,0 +1,327 @@
+/* ── Registration extras (layered on top of login.css + global.css) ──────────── */
+
+/* Wider card for more fields */
+#login-app {
+  max-width: 500px;
+}
+
+.reg-card {
+  padding: 32px 32px 24px;
+}
+
+/* ── Step indicator ─────────────────────────────────────────────────────────── */
+.step-indicator {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin: 0 0 28px;
+  position: relative;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.step-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(46, 125, 50, 0.25);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.step.active .step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(46, 125, 50, 0.4);
+  transform: scale(1.12);
+}
+
+.step.done .step-dot {
+  background: var(--primary-light);
+  border-color: var(--primary-light);
+  color: #fff;
+  transform: scale(1);
+}
+
+.step.done .step-dot span::before {
+  content: '✓';
+}
+.step.done .step-dot span { font-size: 0; }
+.step.done .step-dot span::before { font-size: 0.85rem; }
+
+.step-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s;
+  max-width: 72px;
+  line-height: 1.2;
+}
+
+.step.active .step-label { color: var(--primary-dark); }
+.step.done  .step-label  { color: var(--primary); }
+
+/* Connector line */
+.step-line {
+  flex: 1;
+  height: 2.5px;
+  background: rgba(46, 125, 50, 0.15);
+  margin: 16px 4px 0;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.4s;
+}
+
+.step-line.done {
+  background: var(--primary-light);
+}
+
+/* ── Animated step panels ─────────────────────────────────────────────────── */
+.reg-step {
+  animation: stepFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reg-step.hidden { display: none; }
+
+@keyframes stepFadeIn {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.reg-step.slide-back {
+  animation: stepFadeBack 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes stepFadeBack {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Select styling ───────────────────────────────────────────────────────── */
+.select-wrapper {
+  position: relative;
+}
+
+.select-wrapper select {
+  width: 100%;
+  padding: 13px 36px 13px 14px; /* Adjusted if icons are removed */
+  font-size: 0.97rem;
+  font-family: 'Outfit', 'Noto Sans Devanagari', sans-serif;
+  border: 1.5px solid rgba(46, 125, 50, 0.22);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.88);
+  color: var(--text-main);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* If icons are put back: */
+.select-wrapper .input-icon + select {
+  padding-left: 42px;
+}
+
+.select-wrapper select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12);
+}
+
+.select-wrapper select.invalid {
+  border-color: #ef5350;
+  box-shadow: 0 0 0 3px rgba(239, 83, 80, 0.12);
+}
+
+.select-chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ── Land size row ────────────────────────────────────────────────────────── */
+.land-row {
+  display: flex;
+  gap: 10px;
+}
+
+.land-input { flex: 2; }
+.land-unit  { flex: 1; }
+
+.land-unit select {
+  padding-left: 14px !important;
+}
+
+/* ── Navigation buttons ───────────────────────────────────────────────────── */
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.btn-row .primary-btn {
+  flex: 2;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.back-btn {
+  flex: 1;
+  padding: 13px;
+  font-size: 0.97rem;
+  font-family: 'Outfit', 'Noto Sans Devanagari', sans-serif;
+  font-weight: 600;
+  border: 2px solid rgba(46, 125, 50, 0.3);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--primary-dark);
+  cursor: pointer;
+  transition: all 0.22s ease;
+  letter-spacing: 0.02em;
+}
+
+.back-btn:hover {
+  background: rgba(46, 125, 50, 0.06);
+  border-color: var(--primary);
+}
+
+/* ── Password strength ────────────────────────────────────────────────────── */
+.strength-bar-wrap {
+  height: 5px;
+  border-radius: 4px;
+  background: #e0e0e0;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.strength-bar {
+  height: 100%;
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.strength-bar.s1 { width: 25%;  background: #e53935; }
+.strength-bar.s2 { width: 50%;  background: #fb8c00; }
+.strength-bar.s3 { width: 75%;  background: #fdd835; }
+.strength-bar.s4 { width: 100%; background: #43a047; }
+
+.strength-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+  min-height: 14px;
+  transition: color 0.3s;
+}
+
+.strength-label.s1 { color: #e53935; }
+.strength-label.s2 { color: #fb8c00; }
+.strength-label.s3 { color: #f9a825; }
+.strength-label.s4 { color: #43a047; }
+
+/* ── Custom checkbox ─────────────────────────────────────────────────────── */
+.terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.terms-label input[type="checkbox"] {
+  display: none;
+}
+
+.custom-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid rgba(46, 125, 50, 0.35);
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-top: 1px;
+}
+
+.terms-label input:checked + .custom-checkbox {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+}
+
+.terms-label input:checked + .custom-checkbox::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: 2.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+  display: block;
+}
+
+/* ── Success overlay ─────────────────────────────────────────────────────── */
+.reg-success-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px 16px 8px;
+  animation: fadeIn 0.5s ease;
+}
+
+.reg-success-icon {
+  font-size: 3.2rem;
+  animation: popIn 0.5s 0.1s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.reg-success-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  text-align: center;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .reg-card { padding: 20px 16px 18px; }
+  .step-label { font-size: 0.62rem; max-width: 56px; }
+  .step-dot   { width: 28px; height: 28px; font-size: 0.75rem; }
+  .land-row   { flex-direction: column; gap: 8px; }
+}

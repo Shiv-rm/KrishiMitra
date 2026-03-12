@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KrishiMitra – Login</title>
+  <meta name="description" content="Login to KrishiMitra – your smart farming assistant for crop recommendations and real-time field analysis." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/global.css" />
+  <link rel="stylesheet" href="/src/pages/login/login.css" />
+</head>
+<body class="login-body">
+
+  <div id="login-app">
+
+    <!-- Language Toggle -->
+    <div class="lang-toggle login-lang" role="group" aria-label="Language switcher">
+      <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
+      <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
+    </div>
+
+    <!-- Decorative crop illustration -->
+    <!-- <div class="login-illustration" aria-hidden="true">
+      <div class="illus-circle">
+        <span class="illus-icon">🌾</span>
+      </div>
+    </div> -->
+
+    <!-- Brand -->
+    <div class="login-brand">
+      <h1>KrishiMitra</h1>
+      <p class="login-greeting" data-i18n="loginGreeting">Good farming starts here</p>
+    </div>
+
+    <!-- Card -->
+    <div class="card login-card">
+
+      <h2 data-i18n="loginTitle">Welcome Back</h2>
+      <p class="login-subtitle" data-i18n="loginSubtitle">Sign in to access your KrishiMitra dashboard</p>
+
+      <!-- Error banner -->
+      <div id="login-error" class="login-error hidden" role="alert"></div>
+
+      <form id="login-form" novalidate autocomplete="on">
+
+        <!-- Mobile Number -->
+        <div class="form-group" id="group-phone">
+          <label for="phone" data-i18n="loginPhone">Mobile Number</label>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">📱</span> -->
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              inputmode="numeric"
+              maxlength="10"
+              autocomplete="tel"
+              data-i18n-placeholder="loginPhonePlaceholder"
+              placeholder="Enter your 10-digit mobile number"
+              required
+            />
+          </div>
+          <span class="field-error" id="phone-error"></span>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group" id="group-password">
+          <div class="password-header">
+            <label for="password" data-i18n="loginPassword">Password</label>
+            <a href="#" class="forgot-link" id="forgot-link" data-i18n="loginForgot">Forgot Password?</a>
+          </div>
+          <div class="input-wrapper">
+            <!-- <span class="input-icon">🔒</span> -->
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              data-i18n-placeholder="loginPasswordPlaceholder"
+              placeholder="Enter your password"
+              required
+            />
+            <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password visibility">
+              <!-- <span id="eye-icon">👁</span> -->
+            </button>
+          </div>
+          <span class="field-error" id="password-error"></span>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="primary-btn login-submit" id="login-btn">
+          <span data-i18n="loginBtn">Login</span>
+        </button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span data-i18n="loginOr">or</span>
+      </div>
+
+      <!-- OTP Login -->
+      <button class="otp-btn" id="otp-btn">
+        <!-- <span class="otp-icon">💬</span> -->
+        <span data-i18n="loginWithOTP">Login with OTP</span>
+      </button>
+
+      <!-- Register link -->
+      <p class="register-prompt">
+        <span data-i18n="loginNoAccount">Don't have an account?</span>
+        <a href="#" class="register-link" id="register-link" data-i18n="loginRegister">Register here</a>
+      </p>
+
+    </div><!-- /card -->
+
+    <footer>
+      <p data-i18n="footer">© 2026 KrishiMitra. Advanced Agricultural Intelligence.</p>
+    </footer>
+
+  </div><!-- /login-app -->
+
+  <script type="module" src="/src/pages/login/login.js"></script>
+</body>
+</html>
