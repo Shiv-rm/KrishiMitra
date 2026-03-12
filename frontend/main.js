@@ -1,70 +1,95 @@
 import './style.css';
+import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n.js';
 
-const statusDisplay = document.getElementById("status-message");
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const statusDisplay    = document.getElementById("status-message");
 const resultsContainer = document.getElementById("results-container");
-const locateBtn = document.getElementById("get-location-btn");
+const locateBtn        = document.getElementById("get-location-btn");
+const btnEn            = document.getElementById("btn-en");
+const btnHi            = document.getElementById("btn-hi");
 
+// ── State ─────────────────────────────────────────────────────────────────────
+let lastResult = null;   // Cache latest API result for re-render on lang switch
+
+// ── Language toggle setup ─────────────────────────────────────────────────────
+function syncLangButtons(lang) {
+    btnEn.classList.toggle("active", lang === "en");
+    btnHi.classList.toggle("active", lang === "hi");
+}
+
+btnEn.addEventListener("click", () => setLang("en"));
+btnHi.addEventListener("click", () => setLang("hi"));
+
+onLangChange(lang => {
+    syncLangButtons(lang);
+    // Re-render results panel labels if results are already shown
+    if (lastResult && !resultsContainer.classList.contains("hidden")) {
+        displayResults(lastResult);
+    }
+});
+
+// Boot: apply stored language immediately
+applyTranslations();
+syncLangButtons(getLang());
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function updateStatus(msg) {
     statusDisplay.innerHTML = msg;
 }
 
+// ── Geolocation ───────────────────────────────────────────────────────────────
 function getLocation() {
     if (navigator.geolocation) {
-        updateStatus("Requesting location access...");
+        updateStatus(t("requestingLoc"));
         locateBtn.disabled = true;
-        
-        navigator.geolocation.getCurrentPosition(success, error, {
+
+        navigator.geolocation.getCurrentPosition(geoSuccess, geoError, {
             enableHighAccuracy: true,
             timeout: 5000,
             maximumAge: 0
         });
     } else {
-        updateStatus("Geolocation is not supported by this browser.");
+        updateStatus(t("permDenied"));
     }
 }
 
-async function success(position) {
-    updateStatus("Analysing coordinates...");
-    const latitude = String(position.coords.latitude);
+async function geoSuccess(position) {
+    updateStatus(t("analysingCoords"));
+    const latitude  = String(position.coords.latitude);
     const longitude = String(position.coords.longitude);
-    
     await sendToBackend(latitude, longitude);
 }
 
 async function sendToBackend(latitude, longitude) {
-    const url = "/post"; 
+    const url = "/post";
 
     try {
         const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-                Latitude: latitude,
-                Longitude: longitude,
-             })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.error) {
-            updateStatus(`<span style="color: #c62828;">Error: ${result.error}</span>`);
+            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
             locateBtn.disabled = false;
             return;
         }
 
+        lastResult = result;
         displayResults(result);
-        updateStatus("Success! Data retrieved.");
+        updateStatus(t("success"));
         locateBtn.disabled = false;
-    }
-    catch (err) {
+    } catch (err) {
         console.error("Fetch error:", err.message);
-        updateStatus(`<span style="color: #c62828;">Connection error: Server may be offline</span>`);
+        updateStatus(`<span style="color:#c62828;">${t("connError")}</span>`);
         locateBtn.disabled = false;
     }
 }
 
+// ── Results display ───────────────────────────────────────────────────────────
 function displayResults(data) {
     const cropName = data.recommendation
         ? data.recommendation.charAt(0).toUpperCase() + data.recommendation.slice(1)
@@ -72,9 +97,9 @@ function displayResults(data) {
 
     const recommendationHTML = cropName ? `
         <div class="recommendation-banner">
-            <span class="recommendation-label">Recommended Crop</span>
+            <span class="recommendation-label">${t("recommendedCrop")}</span>
             <span class="recommendation-crop">${cropName}</span>
-            <span class="recommendation-sub">Best match for your soil &amp; climate</span>
+            <span class="recommendation-sub">${t("bestMatch")}</span>
         </div>
     ` : '';
 
@@ -82,55 +107,54 @@ function displayResults(data) {
         ${recommendationHTML}
         <div class="results-grid">
             <div class="result-item">
-                <span class="result-label">Nitrogen</span>
+                <span class="result-label">${t("nitrogen")}</span>
                 <span class="result-value">${data.N}</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Phosphorus</span>
+                <span class="result-label">${t("phosphorus")}</span>
                 <span class="result-value">${data.P}</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Potassium</span>
+                <span class="result-label">${t("potassium")}</span>
                 <span class="result-value">${data.K}</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Soil pH</span>
+                <span class="result-label">${t("soilPH")}</span>
                 <span class="result-value">${data.ph}</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Temperature</span>
+                <span class="result-label">${t("temperature")}</span>
                 <span class="result-value">${data.temperature}°C</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Humidity</span>
+                <span class="result-label">${t("humidity")}</span>
                 <span class="result-value">${data.humidity}%</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Rainfall</span>
-                <span class="result-value">${data.rainfall} <span style="font-size: 0.7rem;">mm/mo</span></span>
+                <span class="result-label">${t("rainfall")}</span>
+                <span class="result-value">${data.rainfall} <span style="font-size:0.7rem;">mm/mo</span></span>
             </div>
         </div>
-        <div style="text-align: right;">
+        <div style="text-align:right;">
             <span class="source-tag">Source: ${data.location_source.replace('state_estimate:', '')}</span>
         </div>
     `;
+
     resultsContainer.classList.remove("hidden");
 }
 
-function error(err) {
+// ── Geolocation error handler ─────────────────────────────────────────────────
+function geoError(err) {
     locateBtn.disabled = false;
     switch (err.code) {
         case err.PERMISSION_DENIED:
-            updateStatus("Permission denied. Enable GPS.");
-            break;
+            updateStatus(t("permDenied")); break;
         case err.POSITION_UNAVAILABLE:
-            updateStatus("Location unavailable.");
-            break;
+            updateStatus(t("posUnavail")); break;
         case err.TIMEOUT:
-            updateStatus("Request timed out.");
-            break;
+            updateStatus(t("timeout")); break;
         default:
-            updateStatus("An unknown error occurred.");
+            updateStatus(t("unknownErr"));
     }
 }
 

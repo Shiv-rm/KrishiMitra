@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "i18next": "^25.8.18",
+    "i18next-browser-languagedetector": "^8.2.1"
   }
 }

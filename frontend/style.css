@@ -18,7 +18,7 @@
 }
 
 body {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Noto Sans Devanagari', sans-serif;
   background: var(--bg-gradient);
   background-attachment: fixed;
   min-height: 100vh;
@@ -27,6 +27,46 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
+}
+
+/* ── Language Toggle ── */
+.lang-toggle {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0;
+  margin-bottom: 16px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(46,125,50,0.2);
+  border-radius: 50px;
+  padding: 3px;
+  width: fit-content;
+  margin-left: auto;
+  box-shadow: 0 2px 8px rgba(46,125,50,0.1);
+  backdrop-filter: blur(6px);
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'Outfit', 'Noto Sans Devanagari', sans-serif;
+  border-radius: 50px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.25s ease;
+  letter-spacing: 0.04em;
+}
+
+.lang-btn:hover {
+  color: var(--primary);
+}
+
+.lang-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(46,125,50,0.35);
 }
 
 #app {
