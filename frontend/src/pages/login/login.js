@@ -128,17 +128,29 @@ form.addEventListener('submit', async (e) => {
 
   if (!valid) return;
 
-  // ── Simulated async login ──────────────────────────────────────────────────
+  // ── Async login to Backend ──────────────────────────────────────────────────
   loginBtn.disabled = true;
-  const loginBtnSpan = loginBtn.querySelector('[data-i18n]');
+  const loginBtnSpan = loginBtn.querySelector('[data-i18n]') || loginBtn;
   const originalText = loginBtnSpan.textContent;
   loginBtnSpan.textContent = t('loginLogging');
 
   try {
-    // Replace this block with a real fetch() call to your auth endpoint
-    await new Promise(resolve => setTimeout(resolve, 1500)); // simulate network
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || "Login Failed");
+    }
 
     // ── On success ────────────────────────────────────────────────────────────
+    localStorage.setItem('km_token', data.token);
+    localStorage.setItem('km_user', JSON.stringify(data.user));
+
     card.classList.add('success-state');
 
     // Show success message below the button
@@ -151,14 +163,14 @@ form.addEventListener('submit', async (e) => {
     }
     successEl.textContent = t('loginSuccess');
 
-    // Redirect to dashboard after 1.5 s
+    // Redirect to dashboard
     setTimeout(() => {
       window.location.href = './index.html';
-    }, 1500);
+    }, 1000);
 
   } catch (err) {
     console.error('Login error:', err);
-    showError(t('loginErrGeneral'));
+    showError(err.message || t('loginErrGeneral'));
     loginBtn.disabled = false;
     loginBtnSpan.textContent = originalText;
   }

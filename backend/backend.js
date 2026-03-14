@@ -7,21 +7,30 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
+
+// Note: db.js is CommonJS, so we import it using standard import (Node 14+)
+import db from './db.js';
+
+import { getGeminiResponse, generateRoadmap, analyzePestImage } from './ai_service.js';
 
 const app = express()
 const port = 3000
 
-app.use(express.json())
+// Increased limit for large base64 image uploads
+app.use(express.json({ limit: '10mb' }))
 app.use(cors())
 // Static serving handled by Vite in development
 
 async function loadNutrientData() {
   return new Promise((resolve) => {
     const data = {};
-    fs.createReadStream('./Nutrient.csv')
+    fs.createReadStream(path.join(__dirname, 'Nutrient.csv'))
       .pipe(csv())
       .on('data', (row) => {
         const state = row.State.trim().toUpperCase();
@@ -198,7 +207,7 @@ app.post('/post', async (req, res) => {
 
     // Call Python script for crop prediction
     // Feature order matches training: N, P, K, temperature, humidity, ph, rainfall
-    const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
+    const pythonPath = path.join(__dirname, '..', '.venv', 'bin', 'python');
     const scriptPath = path.join(__dirname, 'predict.py');
     const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
 
@@ -209,12 +218,19 @@ app.post('/post', async (req, res) => {
         console.error("Python Error:", stderr);
       }
 
-      const recommendation = stdout.trim();
-      console.log("Model Recommendation:", recommendation);
+      // Parse JSON from Python
+      let resultData;
+      try {
+        resultData = JSON.parse(stdout.trim());
+        console.log("Model Recommendation (JSON):", resultData);
+      } catch (e) {
+        console.error("Failed to parse Python output as JSON:", stdout);
+        resultData = { recommendation: stdout.trim() };
+      }
 
       res.json({
         ...result,
-        recommendation: recommendation
+        ...resultData
       });
     } catch (predictError) {
       console.error("Prediction failed:", predictError);
@@ -232,6 +248,174 @@ app.post('/post', async (req, res) => {
 })
 
 
+// Mock Market Trends API
+app.get('/api/market-trends', (req, res) => {
+  const { crop } = req.query;
+  const targetCrop = crop || 'wheat';
+  
+  // Return some synthetic/mock market data
+  res.json({
+    crop: targetCrop,
+    currentPricePerQuintal: Math.floor(Math.random() * 2000) + 1500,
+    demand: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
+    trend: ['Upward', 'Stable', 'Downward'][Math.floor(Math.random() * 3)],
+    source: "KrishiMitra Simulated Market API"
+  });
+});
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, image } = req.body;
+    const aiResponse = await getGeminiResponse(message, image);
+    res.json({ reply: aiResponse });
+  } catch (error) {
+    console.error("Chat API error:", error);
+    res.status(500).json({ reply: "Sorry, I am facing technical difficulties." });
+  }
+});
+
+// Roadmap Generator API
+app.get('/api/roadmap', async (req, res) => {
+  try {
+    const { crop, landSize, landUnit } = req.query;
+    if (!crop || !landSize) {
+      return res.status(400).json({ error: "Crop and landSize are required" });
+    }
+    
+    const roadmapData = await generateRoadmap(crop, parseFloat(landSize), landUnit || 'acres');
+    res.json(roadmapData);
+  } catch (error) {
+    console.error("Roadmap API error:", error);
+    res.status(500).json({ error: "Failed to generate agricultural roadmap." });
+  }
+});
+
+// ---------------------------------------------------------
+// AUTHENTICATION & OTP ROUTES
+// ---------------------------------------------------------
+
+// In-memory OTP store (For Production: use Redis or DB with expiry)
+const otps = {};
+
+app.post('/api/send-otp', (req, res) => {
+    const { phone } = req.body;
+    if (!phone || !/^\d{10}$/.test(phone)) {
+        return res.status(400).json({ error: "Valid 10-digit phone number is required." });
+    }
+    
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otps[phone] = otp;
+
+    console.log(`[DEV OTP] For phone ${phone}: ${otp}`);
+
+    // In production, integrate SMS API here (Twilio, AWS SNS, Msg91, etc.)
+    res.json({ message: "OTP sent successfully.", otp: otp /* Sent back for testing ease */ });
+});
+
+app.post('/api/register', async (req, res) => {
+    const { 
+        fullName, 
+        phone, 
+        password,
+        otp,
+        landSize = 0, 
+        landUnit = "acres" 
+    } = req.body;
+    
+    if (!fullName || !phone || !password || !otp) {
+        return res.status(400).json({ error: "Missing required fields (name, phone, password, otp)." });
+    }
+
+    if (otps[phone] !== otp) {
+        return res.status(401).json({ error: "Invalid or expired OTP." });
+    }
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // Fallbacks for the simplified form
+        const state = "";
+        const district = "";
+        const village = "";
+        const cropType = "";
+
+        const sql = `INSERT INTO users (full_name, phone, state, district, village, land_size, land_unit, crop_type, password_hash) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [fullName, phone, state, district, village, landSize, landUnit, cropType, passwordHash];
+        
+        db.run(sql, params, function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ error: "Phone number already registered." });
+                }
+                return res.status(500).json({ error: "Database error during registration." });
+            }
+            // Clean up OTP after successful registration
+            delete otps[phone];
+
+            const token = jwt.sign({ id: this.lastID, phone }, JWT_SECRET, { expiresIn: '7d' });
+            res.status(201).json({ 
+                message: "User registered successfully", 
+                token, 
+                user: { id: this.lastID, name: fullName, phone } 
+            });
+        });
+    } catch (e) {
+        res.status(500).json({ error: "Server error during registration." });
+    }
+});
+
+app.post('/api/login', (req, res) => {
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+        return res.status(400).json({ error: "Phone and password required." });
+    }
+
+    const sql = `SELECT * FROM users WHERE phone = ?`;
+    db.get(sql, [phone], async (err, user) => {
+        if (err) return res.status(500).json({ error: "Database error." });
+        if (!user) return res.status(401).json({ error: "Invalid phone number or password." });
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) return res.status(401).json({ error: "Invalid phone number or password." });
+
+        const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
+        
+        res.json({
+            message: "Login successful",
+            token,
+            user: {
+                id: user.id,
+                name: user.full_name,
+                phone: user.phone,
+                state: user.state,
+                cropType: user.crop_type
+            }
+        });
+    });
+});
+
+app.post('/api/analyze-disease', async (req, res) => {
+    // Note: Request body size limit in Express defaults to 100kb, 
+    // but json() might have been configured. We'll handle errors gracefully.
+    const { imageBase64 } = req.body;
+    if (!imageBase64) {
+        return res.status(400).json({ error: "No imageBase64 data provided." });
+    }
+
+    try {
+        const analysisData = await analyzePestImage(imageBase64);
+        res.json(analysisData);
+    } catch (error) {
+        console.error("Error in /api/analyze-disease:", error);
+        res.status(500).json({ error: "Failed to analyze the image." });
+    }
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+

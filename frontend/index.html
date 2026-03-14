@@ -8,48 +8,124 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/styles/global.css">
+    <link rel="apple-touch-icon" href="/pwa-192x192.png">
+    <meta name="theme-color" content="#ffffff">
 </head>
 <body>
+    <!-- Top Navigation Bar (Phase 5) -->
+    <nav class="top-navbar">
+        <div class="nav-left">
+            <h1 class="nav-logo">KrishiMitra</h1>
+        </div>
+        <div class="nav-center">
+            <button class="nav-tab active" data-target="tab-predict" data-i18n="tabAnalysis">Crop Analysis</button>
+            <button class="nav-tab" data-target="tab-roadmap" data-i18n="tabRoadmaps">Roadmaps</button>
+            <button class="nav-tab" data-target="tab-pest" data-i18n="tabPest">Pest Protection</button>
+        </div>
+        <div class="nav-right">
+            <!-- Language Toggle -->
+            <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language switcher">
+                <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
+                <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
+            </div>
+            <a href="./login.html" class="nav-link" id="nav-login" data-i18n="navLogin">Login / Register</a>
+        </div>
+    </nav>
+
     <div id="app">
-        <header>
-            <div class="header-top">
-                <a href="./login.html" class="nav-link" id="nav-login" data-i18n="navLogin">Login / Register</a>
-                
-                <!-- Language Toggle -->
-                <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language switcher">
-                    <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
-                    <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
-                </div>
-            </div>
-
-            <div class="logo">
-                <h1>KrishiMitra</h1>
-            </div>
-            <p class="tagline" data-i18n="tagline">Empowering farmers with data-driven insights</p>
-        </header>
-
         <main>
-            <div class="card main-card">
-                <h2 data-i18n="cardTitle">Field Analysis</h2>
-                <p  data-i18n="cardDesc">Get real-time soil and climate data for your specific location.</p>
+            <!-- Tab 1: Crop Prediction & Market Insights -->
+            <section id="tab-predict" class="tab-content active">
+                <div class="dashboard-grid" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- 1. Prediction Card -->
+                    <div class="card main-card" id="prediction-card">
+                    <h2 data-i18n="cardTitle">Field Analysis</h2>
+                    <p data-i18n="cardDesc">Get real-time soil and climate data for your specific location.</p>
 
-                <div class="action-area">
-                    <button id="get-location-btn" class="primary-btn">
-                        <span data-i18n="analyzeBtn">Analyze My Location</span>
-                    </button>
-                    <p id="status-message" class="status"></p>
+                    <div class="action-area">
+                        <button id="get-location-btn" class="primary-btn">
+                            <span data-i18n="analyzeBtn">Analyze My Location</span>
+                        </button>
+                        <p id="status-message" class="status"></p>
+                    </div>
+
+                    <div id="results-container" class="results hidden">
+                        <!-- Basic results injected here -->
+                    </div>
                 </div>
 
-                <div id="results-container" class="results hidden">
-                    <!-- Results will be injected here -->
+                    <!-- 2. Market Insights Card -->
+                    <div class="card market-card hidden" id="market-card" style="background: #fafafa; border-left: 4px solid #2e7d32;">
+                        <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="marketTitle">Market Insights</h2>
+                        <div id="market-container"></div>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- Tab 2: Resource Roadmap -->
+            <section id="tab-roadmap" class="tab-content hidden">
+                <div class="dashboard-grid">
+                    <!-- 3. Resource Roadmap Card -->
+                    <div class="card roadmap-card" id="roadmap-card">
+                        <!-- Roadmap injected here dynamically, initially empty but card visible if tab is clicked -->
+                        <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">Resource Management Roadmap</h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized resource roadmap.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 3: Pest Detection -->
+            <section id="tab-pest" class="tab-content hidden">
+                <div class="dashboard-grid">
+                    <!-- 4. Pest Detection Card -->
+                    <div class="card pest-card" id="pest-card">
+                        <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestTitle">Crop Disease & Pest Detection</h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;" data-i18n="pestDesc">Upload a leaf photo for an instant AI diagnosis and treatment plan.</p>
+                        <div class="action-area">
+                            <input type="file" id="pest-image-upload-dashboard" accept="image/*" style="margin-bottom: 15px; width: 100%;" />
+                            <button id="analyze-pest-btn" class="primary-btn" style="background: var(--bg-card); color: var(--primary-color); border: 2px solid var(--primary-color);">
+                                <span data-i18n="pestBtn">Analyze Leaf</span>
+                            </button>
+                            <p id="pest-status-message" class="status"></p>
+                        </div>
+                        <div id="pest-results-container" class="results hidden" style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                            <!-- Pest results injected here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <footer>
             <p data-i18n="footer">© 2026 KrishiMitra. Advanced Agricultural Intelligence.</p>
         </footer>
+
+        <!-- Chat Modal Layer -->
+        <button id="ai-chat-fab" class="ai-fab" aria-label="Open AI Assistant">
+            <svg viewBox="0 0 24 24" fill="none" class="fab-icon" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#14a34b"/><path d="M15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10Z" fill="white"/><path d="M12 15C13.2 15 14.3 15.3 15.2 15.8C15.8 16.1 16.2 16.6 16.5 17.2C16.8 17.8 17 18.5 17 19H7C7 18.5 7.2 17.8 7.5 17.2C7.8 16.6 8.2 16.1 8.8 15.8C9.7 15.3 10.8 15 12 15Z" fill="white"/></svg>
+        </button>
+
+        <div id="chat-modal" class="chat-modal hidden">
+            <div class="chat-header">
+                <h3>KrishiMitra AI</h3>
+                <button id="close-chat" class="icon-btn">✕</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message ai-message">
+                    <p data-i18n="chatGreeting">Hello! Ask me about crops, diseases, or weather.</p>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="file" id="image-upload" accept="image/*" class="hidden" />
+                <button id="attach-btn" class="icon-btn" aria-label="Upload Image">📷</button>
+                <input type="text" id="chat-input" placeholder="Ask AI..." />
+                <button id="voice-btn" class="icon-btn mic-btn" aria-label="Speak">🎤</button>
+                <button id="send-btn" class="icon-btn send-btn" aria-label="Send">✈️</button>
+            </div>
+        </div>
+
     </div>
     <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/chat.js"></script>
 </body>
 </html>

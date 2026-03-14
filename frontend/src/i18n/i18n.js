@@ -4,9 +4,22 @@
 
 const translations = {
   en: {
+    welcomePrefix: "Welcome,",
+    // Tabs
+    tabAnalysis:   "Crop Analysis",
+    tabRoadmaps:   "Roadmaps",
+    tabPest:       "Pest Protection",
     // Header
     tagline: "Empowering farmers with data-driven insights",
     navLogin: "Login / Register",
+
+    // New Cards
+    marketTitle: "Market Insights",
+    roadmapTitle: "Resource Management Roadmap",
+    roadmapEmpty: "Please complete a Crop Analysis first to generate your personalized resource roadmap.",
+    pestTitle: "Crop Disease & Pest Detection",
+    pestDesc: "Upload a leaf photo for an instant AI diagnosis and treatment plan.",
+    pestBtn: "Analyze Leaf",
 
     // Card
     cardTitle: "Field Analysis",
@@ -114,12 +127,35 @@ const translations = {
     regStrFair:            "Fair",
     regStrGood:            "Good",
     regStrStrong:          "Strong",
+    
+    // Chat UI
+    chatGreeting:          "Hello! Ask me about crops, diseases, or weather.",
+    chatAskPh:             "Ask AI...",
+    chatListening:         "Listening...",
+    chatUploading:         "Uploaded Image",
+    chatLoading:           "...",
+    chatErrorProc:         "Sorry, I couldn't process that.",
+    chatErrorConn:         "Connection error. Please try again.",
+    chatVoiceNotSupp:      "Voice input is not supported in this browser."
   },
 
   hi: {
+    welcomePrefix: "स्वागत है,",
+    // Tabs
+    tabAnalysis:   "फसल विश्लेषण",
+    tabRoadmaps:   "रोडमैप",
+    tabPest:       "कीट सुरक्षा",
     // Header
     tagline: "किसानों को डेटा-आधारित जानकारी से सशक्त बनाना",
     navLogin: "लॉग इन / पंजीकरण",
+
+    // New Cards
+    marketTitle: "बाजार अंतर्दृष्टि",
+    roadmapTitle: "संसाधन प्रबंधन रोडमैप",
+    roadmapEmpty: "अपना व्यक्तिगत संसाधन रोडमैप उत्पन्न करने के लिए कृपया पहले फसल विश्लेषण पूरा करें।",
+    pestTitle: "फसल रोग एवं कीट पहचान",
+    pestDesc: "त्वरित AI निदान और उपचार योजना के लिए एक पत्ती की तस्वीर अपलोड करें।",
+    pestBtn: "पत्ती का विश्लेषण करें",
 
     // Card
     cardTitle: "क्षेत्र विश्लेषण",
@@ -227,6 +263,16 @@ const translations = {
     regStrFair:            "ठीक",
     regStrGood:            "अच्छा",
     regStrStrong:          "मज़बूत",
+
+    // Chat UI
+    chatGreeting:          "नमस्ते! मुझसे फसलों, बीमारियों या मौसम के बारे में पूछें।",
+    chatAskPh:             "AI से पूछें...",
+    chatListening:         "सुन रहा हूँ...",
+    chatUploading:         "छवि अपलोड की गई",
+    chatLoading:           "...",
+    chatErrorProc:         "क्षमा करें, मैं इसे प्रसंस्कृत नहीं कर सका।",
+    chatErrorConn:         "कनेक्शन त्रुटि। कृपया पुनः प्रयास करें।",
+    chatVoiceNotSupp:      "इस ब्राउज़र में वॉयस इनपुट समर्थित नहीं है।"
   },
 };
 

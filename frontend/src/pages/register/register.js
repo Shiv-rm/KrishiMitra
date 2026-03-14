@@ -1,52 +1,27 @@
-// ── KrishiMitra – Registration Wizard Controller ──────────────────────────────
+// ── KrishiMitra – Registration Controller (Simplified) ─────────────────────────
 import { t, setLang, getLang, applyTranslations, onLangChange } from '../../i18n/i18n.js';
 
 // ── DOM refs ───────────────────────────────────────────────────────────────────
 const btnEn        = document.getElementById('btn-en');
 const btnHi        = document.getElementById('btn-hi');
-const regError     = document.getElementById('reg-error');
 const card         = document.querySelector('.reg-card');
 
-const steps        = [
-  document.getElementById('reg-step-1'),
-  document.getElementById('reg-step-2'),
-  document.getElementById('reg-step-3')
-];
-const dots         = [
-  document.getElementById('step-dot-1'),
-  document.getElementById('step-dot-2'),
-  document.getElementById('step-dot-3')
-];
-const lines        = document.querySelectorAll('.step-line');
-
-// Step 1 refs
-const next1        = document.getElementById('next-1');
+// Form inputs
 const nameInput    = document.getElementById('full-name');
 const phoneInput   = document.getElementById('reg-phone');
-const stateInput   = document.getElementById('state');
-
-// Step 2 refs
-const next2        = document.getElementById('next-2');
-const back2        = document.getElementById('back-2');
-const districtInput= document.getElementById('district');
 const landInput    = document.getElementById('land-size');
-
-// Step 3 refs
-const regSubmit    = document.getElementById('reg-submit');
-const back3        = document.getElementById('back-3');
+const landUnitInput= document.getElementById('land-unit');
 const passwordInput= document.getElementById('reg-password');
 const confirmInput = document.getElementById('confirm-password');
 const termsInput   = document.getElementById('terms');
-const strengthBar  = document.getElementById('strength-bar');
-const strengthLabel= document.getElementById('strength-label');
+const otpInput     = document.getElementById('reg-otp');
+const grpOtp       = document.getElementById('grp-otp');
 
+const regSubmit    = document.getElementById('reg-submit');
 const togglePw     = document.getElementById('toggle-pw');
 const toggleConfirm= document.getElementById('toggle-confirm');
-const eyeIcon1     = document.getElementById('eye-icon-1');
-const eyeIcon2     = document.getElementById('eye-icon-2');
 
-// ── State ──────────────────────────────────────────────────────────────────────
-let currentStep = 0; // 0, 1, 2
+let otpSent = false;
 
 // ── Language toggle ────────────────────────────────────────────────────────────
 function syncLangButtons(lang) {
@@ -66,42 +41,12 @@ function applyPlaceholders() {
 onLangChange(lang => {
   syncLangButtons(lang);
   applyPlaceholders();
-  if (strengthLabel.dataset.strength) {
-    updateStrengthUI(strengthLabel.dataset.strength);
-  }
 });
 
 // Init
 applyTranslations();
 applyPlaceholders();
 syncLangButtons(getLang());
-
-// ── Wizard Logic ───────────────────────────────────────────────────────────────
-function goToStep(stepIdx, direction = 'forward') {
-  steps[currentStep].classList.add('hidden');
-  steps[currentStep].classList.remove('active', 'slide-back');
-  
-  currentStep = stepIdx;
-  
-  steps[currentStep].classList.remove('hidden');
-  steps[currentStep].classList.add('active');
-  if (direction === 'back') {
-    steps[currentStep].classList.add('slide-back');
-  }
-
-  updateIndicator();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function updateIndicator() {
-  dots.forEach((dot, idx) => {
-    dot.classList.toggle('active', idx === currentStep);
-    dot.classList.toggle('done', idx < currentStep);
-  });
-  lines.forEach((line, idx) => {
-    line.classList.toggle('done', idx < currentStep);
-  });
-}
 
 // ── Validation Helpers ─────────────────────────────────────────────────────────
 const setErr = (id, msgKey) => {
@@ -119,90 +64,46 @@ const clearErr = (id) => {
 };
 
 const showBanner = (msg) => {
-  regError.textContent = msg;
-  regError.classList.remove('hidden');
+  const errBanner = document.getElementById('reg-error');
+  if (errBanner) {
+      errBanner.textContent = msg;
+      errBanner.classList.remove('hidden');
+  } else {
+      console.error("reg-error element missing, showing alert instead:");
+      alert(msg);
+  }
 };
 
-// ── Step Navigation ────────────────────────────────────────────────────────────
-next1.addEventListener('click', () => {
+// ── Interactions ───────────────────────────────────────────────────────────────
+if (togglePw) {
+  togglePw.addEventListener('click', () => {
+    const isTxt = passwordInput.type === 'text';
+    passwordInput.type = isTxt ? 'password' : 'text';
+    togglePw.classList.toggle('visible', !isTxt);
+  });
+}
+
+if (toggleConfirm) {
+  toggleConfirm.addEventListener('click', () => {
+    const isTxt = confirmInput.type === 'text';
+    confirmInput.type = isTxt ? 'password' : 'text';
+    toggleConfirm.classList.toggle('visible', !isTxt);
+  });
+}
+
+regSubmit.addEventListener('click', async () => {
   let valid = true;
+  
+  // Validation
   if (!nameInput.value.trim()) { setErr('name-error', 'regErrName'); valid = false; }
   else clearErr('name-error');
 
   if (!/^\d{10}$/.test(phoneInput.value.trim())) { setErr('reg-phone-error', 'regErrPhone'); valid = false; }
   else clearErr('reg-phone-error');
 
-  if (!stateInput.value) { setErr('state-error', 'regErrState'); valid = false; }
-  else clearErr('state-error');
-
-  if (valid) goToStep(1);
-});
-
-next2.addEventListener('click', () => {
-  let valid = true;
-  if (!districtInput.value.trim()) { setErr('district-error', 'regErrDistrict'); valid = false; }
-  else clearErr('district-error');
-
   if (!landInput.value || landInput.value <= 0) { setErr('land-error', 'regErrLand'); valid = false; }
   else clearErr('land-error');
 
-  if (valid) goToStep(1); // Wait, should be 2. Corrected below.
-});
-
-// Corrected next2
-next2.removeEventListener('click', null); // just overwriting is fine or use another var
-next2.onclick = () => {
-  let valid = true;
-  if (!districtInput.value.trim()) { setErr('district-error', 'regErrDistrict'); valid = false; }
-  else clearErr('district-error');
-
-  if (!landInput.value || landInput.value <= 0) { setErr('land-error', 'regErrLand'); valid = false; }
-  else clearErr('land-error');
-
-  if (valid) goToStep(2);
-};
-
-back2.addEventListener('click', () => goToStep(0, 'back'));
-back3.addEventListener('click', () => goToStep(1, 'back'));
-
-// ── Step 3 Logic ───────────────────────────────────────────────────────────────
-if(togglePw) {
-  togglePw.addEventListener('click', () => {
-    const isTxt = passwordInput.type === 'text';
-    passwordInput.type = isTxt ? 'password' : 'text';
-    if(eyeIcon1) eyeIcon1.textContent = isTxt ? '👁' : '🙈';
-  });
-}
-
-if(toggleConfirm) {
-  toggleConfirm.addEventListener('click', () => {
-    const isTxt = confirmInput.type === 'text';
-    confirmInput.type = isTxt ? 'password' : 'text';
-    if(eyeIcon2) eyeIcon2.textContent = isTxt ? '👁' : '🙈';
-  });
-}
-
-passwordInput.addEventListener('input', () => {
-  const val = passwordInput.value;
-  let score = 0;
-  if (val.length >= 6) score = 1;
-  if (val.length >= 8 && /[A-Z]/.test(val) && /[0-9]/.test(val)) score = 2;
-  if (val.length >= 10 && /[^A-Za-z0-9]/.test(val)) score = 3;
-  if (val.length >= 12) score = 4;
-
-  const strengths = ['', 'regStrWeak', 'regStrFair', 'regStrGood', 'regStrStrong'];
-  updateStrengthUI(strengths[score], score);
-});
-
-function updateStrengthUI(key, score) {
-  strengthBar.className = 'strength-bar ' + (score ? 's' + score : '');
-  strengthLabel.className = 'strength-label ' + (score ? 's' + score : '');
-  strengthLabel.textContent = key ? t(key) : '';
-  strengthLabel.dataset.strength = key;
-}
-
-regSubmit.addEventListener('click', async () => {
-  let valid = true;
   if (passwordInput.value.length < 6) { setErr('password-error', 'regErrPassword'); valid = false; }
   else clearErr('password-error');
 
@@ -212,23 +113,79 @@ regSubmit.addEventListener('click', async () => {
   if (!termsInput.checked) { setErr('terms-error', 'regErrTerms'); valid = false; }
   else clearErr('terms-error');
 
+  if (otpSent && !otpInput.value.trim()) { setErr('otp-error', 'Please enter the OTP.'); valid = false; }
+  else clearErr('otp-error');
+
   if (!valid) return;
 
-  // Final submit
-  regSubmit.disabled = true;
-  const regBtnSpan = regSubmit.querySelector('[data-i18n]');
+  const regBtnSpan = regSubmit.querySelector('[data-i18n]') || regSubmit;
   const originalText = regBtnSpan.textContent;
-  regBtnSpan.textContent = t('regSubmitting');
+
+  // Step 1: Send OTP
+  if (!otpSent) {
+    regSubmit.disabled = true;
+    regBtnSpan.textContent = "Sending OTP...";
+
+    try {
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneInput.value.trim() })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Failed to send OTP.");
+      
+      otpSent = true;
+      grpOtp.classList.remove('hidden');
+      regBtnSpan.textContent = "Verify & Register";
+      regSubmit.disabled = false;
+      
+      // Dev mode: Show OTP in an alert
+      alert(`[DEV] Your OTP is: ${data.otp}`);
+    } catch (err) {
+      showBanner(err.message || "Could not send OTP.");
+      regSubmit.disabled = false;
+      regBtnSpan.textContent = originalText;
+    }
+    return;
+  }
+
+  // Step 2: Final submit
+  regSubmit.disabled = true;
+  regBtnSpan.textContent = t('regSubmitting') || 'Creating account...';
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const payload = {
+        fullName: nameInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        landSize: parseFloat(landInput.value) || 0,
+        landUnit: landUnitInput.value,
+        password: passwordInput.value,
+        otp: otpInput.value.trim()
+    };
+
+    const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
     
-    // Success
+    if (!res.ok) {
+        throw new Error(data.error || "Registration failed");
+    }
+
+    // Success - Store token
+    localStorage.setItem('km_token', data.token);
+    localStorage.setItem('km_user', JSON.stringify(data.user));
+
     card.innerHTML = `
       <div class="reg-success-overlay">
         <div class="reg-success-icon">🎉</div>
-        <p class="reg-success-text">${t('regSuccess')}</p>
-        <p style="color:var(--text-muted); font-size:0.9rem;">${t('loginLogging')}</p>
+        <p class="reg-success-text">${t('regSuccess') || 'Success!'}</p>
+        <p style="color:var(--text-muted); font-size:0.9rem;">${t('loginLogging') || 'Logging in...'}</p>
       </div>
     `;
     card.classList.add('success-state');
@@ -238,8 +195,8 @@ regSubmit.addEventListener('click', async () => {
     }, 2500);
 
   } catch (err) {
-    showBanner(t('regErrGeneral'));
+    showBanner(err.message || t('regErrGeneral'));
     regSubmit.disabled = false;
-    regBtnSpan.textContent = originalText;
+    regBtnSpan.textContent = "Verify & Register";
   }
 });

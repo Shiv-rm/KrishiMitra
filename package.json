@@ -1,14 +1,19 @@
 {
   "type": "module",
   "dependencies": {
+    "@google/genai": "^1.45.0",
     "axios": "^1.13.6",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "csv-parser": "^3.2.0",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "geotiff": "^3.0.4",
+    "jsonwebtoken": "^9.0.3",
     "onnxruntime-node": "^1.20.0",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
-    "request-response": "^0.1.2"
+    "request-response": "^0.1.2",
+    "sqlite3": "^6.0.1"
   }
 }
