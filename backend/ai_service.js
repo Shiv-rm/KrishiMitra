@@ -71,33 +71,47 @@ export async function getGeminiResponse(message, base64Image = null) {
 /**
  * Generates a Resource Management Roadmap for a specific crop and field size.
  * Returns a JSON object containing the timeline and resource requirements.
+ * Ensures consistent translation of all generated text to the requested language.
  */
-export async function generateRoadmap(crop, landSize, landUnit = 'acres') {
+export async function generateRoadmap(crop, landSize, landUnit = 'acres', lang = 'en') {
   if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
   try {
+    const langInstruction = lang === 'hi'
+      ? 'CRITICAL: ALL text values in the JSON including descriptions, phases, timelines, item names, and quantities MUST be in Hindi language.'
+      : 'All text values in the JSON MUST be in English language.';
+
     const prompt = `
 You are an expert agricultural scientist. A farmer wants to grow "${crop}" on a field of ${landSize} ${landUnit}.
-Create a step-by-step Resource Management Roadmap for them. Calculate the estimated required amounts of fertilizers, pesticides, and water for this specific land size.
+Create a detailed Resource Management Roadmap subdivided into a growing timeline and a resource requirements list.
 
-You MUST respond strictly with valid JSON. Do not use markdown blocks like \`\`\`json. Return only the JSON object.
-Format the JSON exactly like this:
+${langInstruction}
+
+IMPORTANT QUANTITY RULES:
+- Express ALL fertilizer and seed quantities in terms of JUTE SACKS (1 jute sack = 50 kg). Example: "3 jute sacks (150 kg)".
+- For liquid pesticides, express in liters.
+- Calculate exact quantities for the given field size of ${landSize} ${landUnit}.
+- Provide a "total_summary" array listing the grand total of ALL resources needed for the entire crop season.
+
+You MUST respond strictly with valid JSON. Do not use markdown blocks. Return ONLY the JSON object.
+Format:
 {
-  "roadmap": [
-    {
-      "phase": "Pre-sowing",
-      "timeline": "Week 1",
-      "action": "Soil preparation and base fertilization.",
-      "resources": "X kg of NPK fertilizer, Y liters of water"
-    },
-    {
-      "phase": "Growth",
-      "timeline": "Week 4-8",
-      "action": "Description of action",
-      "resources": "Description of resources needed"
-    }
+  "timeline": [
+    { "phase": "Pre-sowing", "time": "Week 1", "action": "Detailed action description." },
+    { "phase": "Sowing", "time": "Week 2", "action": "Action description." }
+  ],
+  "total_summary": [
+    { "item": "NPK Fertilizer", "total_quantity": "5 jute sacks (250 kg)" },
+    { "item": "Urea", "total_quantity": "2 jute sacks (100 kg)" },
+    { "item": "Seeds", "total_quantity": "1 jute sack (50 kg)" },
+    { "item": "Pesticide X", "total_quantity": "4 liters" }
+  ],
+  "resources": [
+    { "phase": "Pre-sowing", "item": "NPK Fertilizer", "quantity": "2 jute sacks (100 kg)", "note": "Apply before tilling." },
+    { "phase": "Sowing", "item": "Seeds", "quantity": "1 jute sack (50 kg)", "note": "Use certified seeds." },
+    { "phase": "Growth", "item": "Urea", "quantity": "2 jute sacks (100 kg)", "note": "Top dressing at 30 days." }
   ]
 }`;
 
@@ -110,14 +124,75 @@ Format the JSON exactly like this:
 
     // Clean potential markdown blocks
     let rawText = response.text.trim();
-    if (rawText.startsWith('```json')) rawText = rawText.slice(7);
-    if (rawText.startsWith('```')) rawText = rawText.slice(3);
-    if (rawText.endsWith('```')) rawText = rawText.slice(0, -3);
+    if (rawText.startsWith('\`\`\`json')) rawText = rawText.slice(7);
+    if (rawText.startsWith('\`\`\`')) rawText = rawText.slice(3);
+    if (rawText.endsWith('\`\`\`')) rawText = rawText.slice(0, -3);
 
     return JSON.parse(rawText.trim());
   } catch (error) {
     console.error("Gemini Roadmap API Error:", error);
     throw new Error("Failed to generate agricultural roadmap.");
+  }
+}
+
+/**
+ * Predicts expected pest and disease threats for a crop with prevention strategies.
+ */
+export async function getPestPrediction(crop, lang = 'en') {
+  if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+
+  try {
+    const langInstruction = lang === 'hi'
+      ? 'CRITICAL: ALL text values in the JSON including pest names, descriptions, and strategies MUST be in Hindi language.'
+      : 'All text values in the JSON MUST be in English language.';
+
+    const prompt = `
+You are an expert agronomist. A farmer is planning to grow "${crop}".
+Predict the most common pest and disease threats they are likely to encounter and provide actionable prevention strategies.
+
+${langInstruction}
+
+You MUST respond strictly with valid JSON. Return ONLY the JSON object.
+Format:
+{
+  "threats": [
+    {
+      "name": "Aphids",
+      "type": "Pest",
+      "when": "Early growth stage (Weeks 2-6)",
+      "description": "Small sap-sucking insects that cluster on new shoots.",
+      "prevention": ["Spray neem oil every 2 weeks.", "Introduce ladybugs as natural predators."],
+      "severity": "Medium"
+    },
+    {
+      "name": "Powdery Mildew",
+      "type": "Disease",
+      "when": "Humid periods",
+      "description": "Fungal infection causing white powdery coating on leaves.",
+      "prevention": ["Ensure good air circulation.", "Apply sulfur-based fungicide."],
+      "severity": "High"
+    }
+  ]
+}`;
+
+    const model = 'gemini-2.5-flash';
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { temperature: 0.3 }
+    });
+
+    let rawText = response.text.trim();
+    if (rawText.startsWith('\`\`\`json')) rawText = rawText.slice(7);
+    if (rawText.startsWith('\`\`\`')) rawText = rawText.slice(3);
+    if (rawText.endsWith('\`\`\`')) rawText = rawText.slice(0, -3);
+
+    return JSON.parse(rawText.trim());
+  } catch (error) {
+    console.error('Gemini Pest Prediction Error:', error);
+    throw new Error('Failed to generate pest prediction.');
   }
 }
 

@@ -1,48 +1,90 @@
 import './styles/global.css';
 import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n/i18n.js';
 
+// ── Auth Gate: redirect to login if not authenticated ──────────────────────────
+const kmToken = localStorage.getItem('km_token');
+if (!kmToken) {
+    window.location.href = './login.html';
+}
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const statusDisplay    = document.getElementById("status-message");
+const statusDisplay = document.getElementById("status-message");
 const resultsContainer = document.getElementById("results-container");
-const locateBtn        = document.getElementById("get-location-btn");
-const btnEn            = document.getElementById("btn-en");
-const btnHi            = document.getElementById("btn-hi");
+const locateBtn = document.getElementById("get-location-btn");
+const btnEn = document.getElementById("btn-en");
+const btnHi = document.getElementById("btn-hi");
+const marketCard = document.getElementById("market-card");
+const marketContainer = document.getElementById("market-container");
 
-// New DOM refs Phase 4 and 5
-const marketCard       = document.getElementById("market-card");
-const marketContainer  = document.getElementById("market-container");
-const roadmapCard      = document.getElementById("roadmap-card");
+// Roadmap sub-tab DOM refs
+const roadmapTimelineCard = document.getElementById("roadmap-timeline-card");
+const roadmapResourcesCard = document.getElementById("roadmap-resources-card");
 
-const pestInput        = document.getElementById("pest-image-upload-dashboard");
-const pestBtn          = document.getElementById("analyze-pest-btn");
-const pestStatus       = document.getElementById("pest-status-message");
-const pestResults      = document.getElementById("pest-results-container");
+// Pest DOM refs
+const pestPredictionContent = document.getElementById("pest-prediction-content");
+const pestInput = document.getElementById("pest-image-upload-dashboard");
+const pestBtn = document.getElementById("analyze-pest-btn");
+const pestStatus = document.getElementById("pest-status-message");
+const pestResults = document.getElementById("pest-results-container");
 
-// ── Tab Navigation Logic (Phase 5) ────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
+let lastResult = null;
+let userProfile = { land_size: 1, land_unit: 'acres' }; // default fallback
+
+// ── Fetch user profile from backend for accurate land size ────────────────────
+async function loadUserProfile() {
+    try {
+        const res = await fetch('/api/me', {
+            headers: { 'Authorization': `Bearer ${kmToken}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            userProfile = {
+                land_size: data.land_size || 1,
+                land_unit: data.land_unit || 'acres'
+            };
+            console.log('User profile loaded:', userProfile);
+        }
+    } catch (e) {
+        console.warn('Could not fetch user profile, using defaults.');
+    }
+}
+
+// ── Tab Navigation Logic ───────────────────────────────────────────────────────
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
 navTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-        // 1. Remove active class from all tabs
         navTabs.forEach(t => t.classList.remove('active'));
-        // 2. Add active class to clicked tab
         tab.classList.add('active');
-        
-        // 3. Hide all sections
         tabContents.forEach(content => content.classList.add('hidden'));
-        
-        // 4. Show target section
         const targetId = tab.getAttribute('data-target');
         const targetContent = document.getElementById(targetId);
-        if (targetContent) {
-            targetContent.classList.remove('hidden');
-        }
+        if (targetContent) targetContent.classList.remove('hidden');
     });
 });
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let lastResult = null;   // Cache latest API result for re-render on lang switch
+// ── Roadmap Sub-tab Navigation ─────────────────────────────────────────────────
+function wireSubTabs(parentId) {
+    const parent = document.getElementById(parentId);
+    if (!parent) return;
+    const tabs = parent.querySelectorAll('.sub-tab');
+    const contents = parent.querySelectorAll('.sub-tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            contents.forEach(c => c.classList.add('hidden'));
+            const targetId = tab.getAttribute('data-subtarget');
+            const target = document.getElementById(targetId);
+            if (target) target.classList.remove('hidden');
+        });
+    });
+}
+
+wireSubTabs('tab-roadmap');
+wireSubTabs('tab-pest');
 
 // ── Language toggle setup ─────────────────────────────────────────────────────
 function syncLangButtons(lang) {
@@ -55,62 +97,64 @@ btnHi.addEventListener("click", () => setLang("hi"));
 
 onLangChange(lang => {
     syncLangButtons(lang);
-    // Re-render results panel labels if results are already shown
     if (lastResult && !resultsContainer.classList.contains("hidden")) {
         displayResults(lastResult);
     }
 });
 
-// Formats a welcome message fallback
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function updateStatus(msg) { statusDisplay.innerHTML = msg; }
+
 function getWelcomeMessage(userName) {
-    return t("welcomePrefix") ? `${t("welcomePrefix")} ${userName}` : `Welcome, ${userName}`;
+    return `${t("welcomePrefix")} ${userName}`;
 }
 
-// ── Check Auth Status on Load ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+// ── Auth display ──────────────────────────────────────────────────────────────
+// Run immediately (not just in DOMContentLoaded) so the button updates
+// before applyTranslations() can overwrite it.
+function updateNavForUser() {
     const userStr = localStorage.getItem('km_user');
     const navLoginBtn = document.getElementById('nav-login');
-    
-    if (userStr && navLoginBtn) {
+    if (!navLoginBtn) return;
+    if (userStr) {
         try {
             const user = JSON.parse(userStr);
-            const firstName = user.name.split(' ')[0];
-            
+            const firstName = (user.name || '').split(' ')[0] || 'User';
+            // Remove data-i18n so applyTranslations() won't overwrite this
+            navLoginBtn.removeAttribute('data-i18n');
             navLoginBtn.textContent = `${getWelcomeMessage(firstName)} (Logout)`;
             navLoginBtn.href = '#';
             navLoginBtn.classList.add('logged-in');
-            
             navLoginBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 localStorage.removeItem('km_token');
                 localStorage.removeItem('km_user');
-                window.location.reload();
+                window.location.href = './login.html';
             });
-        } catch (e) {
-            console.error("Failed to parse user session", e);
-        }
+        } catch (e) { console.error("Failed to parse user session", e); }
     }
+}
+
+// ── Auth & data load on DOMContentLoaded ──────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load actual user profile for land size from DB
+    await loadUserProfile();
+    // Auto-load cached analysis if available
+    await loadCachedAnalysis();
 });
 
 // Boot: apply stored language immediately
+updateNavForUser(); // must run before applyTranslations so it can strip data-i18n first
 applyTranslations();
 syncLangButtons(getLang());
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function updateStatus(msg) {
-    statusDisplay.innerHTML = msg;
-}
 
 // ── Geolocation ───────────────────────────────────────────────────────────────
 function getLocation() {
     if (navigator.geolocation) {
         updateStatus(t("requestingLoc"));
         locateBtn.disabled = true;
-
         navigator.geolocation.getCurrentPosition(geoSuccess, geoError, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
+            enableHighAccuracy: true, timeout: 5000, maximumAge: 0
         });
     } else {
         updateStatus(t("permDenied"));
@@ -119,24 +163,19 @@ function getLocation() {
 
 async function geoSuccess(position) {
     updateStatus(t("analysingCoords"));
-    const latitude  = String(position.coords.latitude);
+    const latitude = String(position.coords.latitude);
     const longitude = String(position.coords.longitude);
     await sendToBackend(latitude, longitude);
 }
 
 async function sendToBackend(latitude, longitude) {
-    const url = "/post";
-
     try {
-        const response = await fetch(url, {
+        const response = await fetch("/post", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
         });
-
         const result = await response.json();
-        console.log("result : ", result);
-        
 
         if (result.error) {
             updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
@@ -144,40 +183,35 @@ async function sendToBackend(latitude, longitude) {
             return;
         }
 
-        updateStatus("Gathering market and resource roadmap data...");
+        updateStatus("Gathering market, roadmap and pest data...");
 
-        // Fetch market trends & resource roadmap for the recommended crop in parallel
         if (result.top_recommendation) {
-            const [marketRes, roadmapData] = await Promise.allSettled([
-                // -> can send result as query parameter or in the request body
-                // 1 -> if query parameter /api/market-trends?result=${encodeURIComponent(JSON.stringify(result))}
-                // encodeURIComponent() is a JavaScript function that encodes special characters in a URL parameter so the URL remains valid.
-                // When you pass data in a URL, characters like spaces, &, ?, /, = etc. can break the URL or change its meaning.
-                // encodeURIComponent() converts them into a safe format.
-                // Most backend frameworks automatically decode query parameters.
-
-                fetch(`/api/market-trends`,{
+            const lang = localStorage.getItem("km_lang") || "en";
+            const [marketRes, roadmapRes, pestRes] = await Promise.allSettled([
+                fetch('/api/market-trends', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(result)
-                }).then(res => res.json()),
-                fetchRoadmap(result.top_recommendation)
+                }).then(r => r.json()),
+                fetchRoadmap(result.top_recommendation, lang),
+                fetchPestPrediction(result.top_recommendation, lang)
             ]);
-            
-            if (marketRes.status === 'fulfilled') {
-                result.market = marketRes.value;
-                console.log((marketRes.value));
-                
+
+            if (marketRes.status === 'fulfilled') result.market = marketRes.value;
+            if (roadmapRes.status === 'fulfilled' && roadmapRes.value) {
+                result.timeline = roadmapRes.value.timeline || null;
+                result.total_summary = roadmapRes.value.total_summary || null;
+                result.resources = roadmapRes.value.resources || null;
             }
-            if (roadmapData.status === 'fulfilled') {
-                result.roadmap = roadmapData.value?.roadmap || null;
+            if (pestRes.status === 'fulfilled' && pestRes.value) {
+                result.pest_threats = pestRes.value.threats || null;
             }
-            console.log("market trends fetched.");
-            
         }
 
         lastResult = result;
         displayResults(result);
+        // Save the full result to DB, replacing any previous analysis for this user
+        saveAnalysis(result);
         updateStatus(t("success"));
         locateBtn.disabled = false;
     } catch (err) {
@@ -187,27 +221,54 @@ async function sendToBackend(latitude, longitude) {
     }
 }
 
-// ── Roadmap Helpers ───────────────────────────────────────────────────────────
-async function fetchRoadmap(crop) {
-    let landSize = 1; // fallback
-    let landUnit = 'acres';
+// ── Save analysis to DB ───────────────────────────────────────────────────────
+async function saveAnalysis(result) {
     try {
-        const userStr = localStorage.getItem('km_user');
-        if (userStr) {
-            const user = JSON.parse(userStr);
-            if (user.landSize) landSize = user.landSize;
-            if (user.landUnit) landUnit = user.landUnit;
-        }
-    } catch(e) {}
+        await fetch('/api/save-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${kmToken}`
+            },
+            body: JSON.stringify({ analysis: result })
+        });
+        console.log('Analysis saved to DB.');
+    } catch (e) { console.warn('Could not save analysis:', e); }
+}
 
+// ── Load cached analysis from DB on startup ───────────────────────────────────
+async function loadCachedAnalysis() {
     try {
-        const res = await fetch(`/api/roadmap?crop=${encodeURIComponent(crop)}&landSize=${landSize}&landUnit=${landUnit}`);
+        const res = await fetch('/api/my-analysis', {
+            headers: { 'Authorization': `Bearer ${kmToken}` }
+        });
+        const data = await res.json();
+        if (data.analysis) {
+            lastResult = data.analysis;
+            displayResults(data.analysis);
+            const when = new Date(data.analysed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            updateStatus(`✅ Showing last analysis from ${when}. Click "Analyze My Location" to refresh.`);
+        }
+    } catch (e) { console.warn('Could not load cached analysis:', e); }
+}
+
+// ── Roadmap Fetch ─────────────────────────────────────────────────────────────
+async function fetchRoadmap(crop, lang) {
+    const { land_size, land_unit } = userProfile;
+    try {
+        const res = await fetch(`/api/roadmap?crop=${encodeURIComponent(crop)}&landSize=${land_size}&landUnit=${land_unit}&lang=${lang}`);
         if (!res.ok) throw new Error("Roadmap fetch failed");
         return await res.json();
-    } catch (e) {
-        console.error("Roadmap Error:", e);
-        return null;
-    }
+    } catch (e) { console.error("Roadmap Error:", e); return null; }
+}
+
+// ── Pest Prediction Fetch ─────────────────────────────────────────────────────
+async function fetchPestPrediction(crop, lang) {
+    try {
+        const res = await fetch(`/api/pest-prediction?crop=${encodeURIComponent(crop)}&lang=${lang}`);
+        if (!res.ok) throw new Error("Pest prediction failed");
+        return await res.json();
+    } catch (e) { console.error("Pest prediction error:", e); return null; }
 }
 
 // ── Results display ───────────────────────────────────────────────────────────
@@ -269,6 +330,7 @@ function displayResults(data) {
         </div>
     `;
 
+    // Market Card
     if (data.market) {
         marketContainer.innerHTML = `
             <div style="display: flex; gap: 20px; font-size: 0.95rem; color: var(--text-muted);">
@@ -282,92 +344,165 @@ function displayResults(data) {
         marketCard.classList.add("hidden");
     }
 
-    if (data.roadmap) {
-        roadmapCard.innerHTML = `
-            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">${t('roadmapTitle')}</h2>
+    // ── Roadmap: Timeline sub-tab ────────────────────────────────────────────
+    if (data.timeline && data.timeline.length > 0) {
+        roadmapTimelineCard.innerHTML = `
+            <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">${t('roadmapTitle')}</h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">${cropName ? `📍 ${cropName}` : ''}</p>
+            <h3 style="color: var(--primary-color); font-size: 1rem; margin-bottom: 12px;" data-i18n="roadmapSubTimeline">${t('roadmapSubTimeline')}</h3>
             <div class="roadmap-timeline">
-                ${data.roadmap.map((step, index) => `
+                ${data.timeline.map(step => `
                     <div class="roadmap-step">
                         <div class="roadmap-step-dot"></div>
                         <div class="roadmap-step-content">
                             <div class="roadmap-step-header">
                                 <strong>${step.phase}</strong>
-                                <span class="roadmap-step-time">${step.timeline}</span>
+                                <span class="roadmap-step-time">${step.time}</span>
                             </div>
                             <p class="roadmap-step-action">${step.action}</p>
-                            <p class="roadmap-step-resources">💧 <strong>Resources:</strong> ${step.resources}</p>
                         </div>
                     </div>
                 `).join('')}
             </div>
         `;
     } else {
-        roadmapCard.innerHTML = `
+        roadmapTimelineCard.innerHTML = `
             <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">${t('roadmapTitle')}</h2>
             <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">${t('roadmapEmpty')}</p>
         `;
     }
 
+    // ── Roadmap: Resources sub-tab ──────────────────────────────────────────
+    if (data.resources && data.resources.length > 0) {
+        const totalSummaryHTML = data.total_summary && data.total_summary.length > 0 ? `
+            <div class="resources-summary-box">
+                <h3 data-i18n="roadmapTotalResources">${t('roadmapTotalResources')}</h3>
+                <table class="resources-table">
+                    <thead>
+                        <tr><th>Item</th><th>Total Quantity</th></tr>
+                    </thead>
+                    <tbody>
+                        ${data.total_summary.map(r => `
+                            <tr>
+                                <td>${r.item}</td>
+                                <td><strong>${r.total_quantity}</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : '';
+
+        roadmapResourcesCard.innerHTML = `
+            <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapResourcesTitle">${t('roadmapResourcesTitle')}</h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">📐 ${userProfile.land_size} ${userProfile.land_unit}</p>
+            ${totalSummaryHTML}
+            <h3 style="color: var(--primary-color); font-size: 1rem; margin: 20px 0 12px;" data-i18n="roadmapSubResources">${t('roadmapSubResources')} by Phase</h3>
+            <div class="roadmap-timeline">
+                ${data.resources.map(res => `
+                    <div class="roadmap-step">
+                        <div class="roadmap-step-dot"></div>
+                        <div class="roadmap-step-content">
+                            <div class="roadmap-step-header">
+                                <strong>${res.item}</strong>
+                                <span class="roadmap-step-time">${res.phase}</span>
+                            </div>
+                            <p class="roadmap-step-resources">📦 <strong>${res.quantity}</strong></p>
+                            ${res.note ? `<p class="roadmap-step-action" style="margin-top:4px; font-size:0.85rem;">${res.note}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        roadmapResourcesCard.innerHTML = `
+            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapResourcesTitle">${t('roadmapResourcesTitle')}</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">${t('roadmapEmpty')}</p>
+        `;
+    }
+
+    // ── Pest Protection: Predicted threats ─────────────────────────────────
+    if (data.pest_threats && data.pest_threats.length > 0) {
+        const severityColor = { High: '#c62828', Medium: '#e65100', Low: '#2e7d32' };
+        pestPredictionContent.innerHTML = data.pest_threats.map(threat => `
+            <div class="pest-threat-card">
+                <div class="pest-threat-header">
+                    <div>
+                        <span class="pest-threat-name">${threat.name}</span>
+                        <span class="pest-threat-type">${threat.type}</span>
+                    </div>
+                    <span class="pest-severity-badge" style="background: ${severityColor[threat.severity] || '#555'};">${threat.severity}</span>
+                </div>
+                <p class="pest-threat-when">⏰ ${threat.when}</p>
+                <p class="pest-threat-desc">${threat.description}</p>
+                <div class="pest-threat-prevention">
+                    <strong>Prevention:</strong>
+                    <ul>${threat.prevention.map(p => `<li>${p}</li>`).join('')}</ul>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ── Main results panel ─────────────────────────────────────────────────
     resultsContainer.innerHTML = `
         ${recommendationHTML}
         ${forecastsHTML}
         <h4 style="color: var(--text-muted); margin-top: 25px; margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Field Parameters</h4>
         <div class="results-grid">
-            <div class="result-item">
-                <span class="result-label">${t("nitrogen") || 'Nitrogen'}</span>
-                <span class="result-value">${data.N}</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("phosphorus") || 'Phosphorus'}</span>
-                <span class="result-value">${data.P}</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("potassium") || 'Potassium'}</span>
-                <span class="result-value">${data.K}</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("soilPH") || 'Soil pH'}</span>
-                <span class="result-value">${data.ph}</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("temperature") || 'Temperature'}</span>
-                <span class="result-value">${data.temperature}°C</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("humidity") || 'Humidity'}</span>
-                <span class="result-value">${data.humidity}%</span>
-            </div>
-            <div class="result-item">
-                <span class="result-label">${t("rainfall") || 'Rainfall'}</span>
-                <span class="result-value">${data.rainfall} <span style="font-size:0.7rem;">mm/mo</span></span>
-            </div>
+            <div class="result-item"><span class="result-label">${t("nitrogen")}</span><span class="result-value">${data.N}</span></div>
+            <div class="result-item"><span class="result-label">${t("phosphorus")}</span><span class="result-value">${data.P}</span></div>
+            <div class="result-item"><span class="result-label">${t("potassium")}</span><span class="result-value">${data.K}</span></div>
+            <div class="result-item"><span class="result-label">${t("soilPH")}</span><span class="result-value">${data.ph}</span></div>
+            <div class="result-item"><span class="result-label">${t("temperature")}</span><span class="result-value">${data.temperature}°C</span></div>
+            <div class="result-item"><span class="result-label">${t("humidity")}</span><span class="result-value">${data.humidity}%</span></div>
+            <div class="result-item"><span class="result-label">${t("rainfall")}</span><span class="result-value">${data.rainfall} <span style="font-size:0.7rem;">mm/mo</span></span></div>
         </div>
         <div style="text-align:right;">
             <span class="source-tag">Source: ${data.location_source ? data.location_source.replace('state_estimate:', '') : 'Unknown'}</span>
         </div>
     `;
-
     resultsContainer.classList.remove("hidden");
+
+    // Apply translations to newly injected elements
+    applyTranslations();
 }
 
 // ── Geolocation error handler ─────────────────────────────────────────────────
 function geoError(err) {
     locateBtn.disabled = false;
     switch (err.code) {
-        case err.PERMISSION_DENIED:
-            updateStatus(t("permDenied")); break;
-        case err.POSITION_UNAVAILABLE:
-            updateStatus(t("posUnavail")); break;
-        case err.TIMEOUT:
-            updateStatus(t("timeout")); break;
-        default:
-            updateStatus(t("unknownErr"));
+        case err.PERMISSION_DENIED: updateStatus(t("permDenied")); break;
+        case err.POSITION_UNAVAILABLE: updateStatus(t("posUnavail")); break;
+        case err.TIMEOUT: updateStatus(t("timeout")); break;
+        default: updateStatus(t("unknownErr"));
     }
 }
 
 locateBtn.addEventListener('click', getLocation);
 
-// ── Pest Detection Logic ───────────────────────────────────────────────────────
+// ── Pest Image Upload Dropzone ─────────────────────────────────────────────────
+const dropzone = document.getElementById('pest-upload-dropzone');
+if (dropzone) {
+    dropzone.addEventListener('click', () => pestInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) pestInput.files = e.dataTransfer.files;
+        updateDropzonePreview();
+    });
+    pestInput.addEventListener('change', updateDropzonePreview);
+}
+
+function updateDropzonePreview() {
+    const file = pestInput.files[0];
+    if (file && dropzone) {
+        dropzone.querySelector('p').textContent = `📎 ${file.name}`;
+    }
+}
+
+// ── Pest Detection (image analysis) ───────────────────────────────────────────
 if (pestBtn) {
     pestBtn.addEventListener("click", async () => {
         const file = pestInput.files[0];
@@ -375,7 +510,6 @@ if (pestBtn) {
             pestStatus.innerHTML = `<span style="color:#c62828;">Please select an image first.</span>`;
             return;
         }
-
         pestStatus.innerHTML = "Analyzing image with AI...";
         pestBtn.disabled = true;
 
@@ -383,15 +517,12 @@ if (pestBtn) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64String = reader.result.split(',')[1];
-                
                 const response = await fetch('/api/analyze-disease', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64String })
                 });
-
                 const data = await response.json();
-                
                 if (!response.ok) {
                     pestStatus.innerHTML = `<span style="color:#c62828;">${data.error || 'Failed to analyze image.'}</span>`;
                 } else {

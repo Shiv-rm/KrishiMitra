@@ -17,7 +17,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 // Use the PostgreSQL pool imported from pdb.js
 import { pool as db, initializeDB } from './database/pdb.js';
 
-import { getGeminiResponse, generateRoadmap, analyzePestImage } from './ai_service.js';
+import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
 
 const app = express()
 const port = 3000
@@ -36,11 +36,11 @@ async function loadNutrientData() {
         const state = row.State.trim().toUpperCase();
         data[state] = {
           N: estimateNutrient(+row.n_High, +row.n_Medium, +row.n_Low,
-               { high: 700, medium: 420, low: 140 }),
+            { high: 700, medium: 420, low: 140 }),
           P: estimateNutrient(+row.p_High, +row.p_Medium, +row.p_Low,
-               { high: 35, medium: 17, low: 5 }),
+            { high: 35, medium: 17, low: 5 }),
           K: estimateNutrient(+row.k_High, +row.k_Medium, +row.k_Low,
-               { high: 350, medium: 194, low: 54 })
+            { high: 350, medium: 194, low: 54 })
         };
       })
       .on('end', () => resolve(data));
@@ -52,8 +52,8 @@ function estimateNutrient(highPct, mediumPct, lowPct, ranges) {
   if (total === 0) return ranges.medium; // fallback
   return Math.round(
     ((highPct / total) * ranges.high +
-     (mediumPct / total) * ranges.medium +
-     (lowPct / total) * ranges.low)
+      (mediumPct / total) * ranges.medium +
+      (lowPct / total) * ranges.low)
   );
 }
 
@@ -87,13 +87,13 @@ async function getNPK(lat, lon) {
 }
 
 function debounce(func, delay) {
-    let timeout;
-    return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
 }
 async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (!depth.endsWith("cm")) depth += "cm";
@@ -142,12 +142,12 @@ async function getClimateAverages(lat, lon) {
   const now = new Date();
   const month = now.getMonth(); // 0-indexed
 
-  const monthKeys = ["JAN","FEB","MAR","APR","MAY","JUN",
-                     "JUL","AUG","SEP","OCT","NOV","DEC"];
-  const daysInMonth = [31,28,31,30,31,30,31,31,30,31,30,31];
+  const monthKeys = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
   const monthKey = monthKeys[month];
-  const days     = daysInMonth[month];
+  const days = daysInMonth[month];
 
   const url =
     `https://power.larc.nasa.gov/api/temporal/climatology/point?` +
@@ -165,9 +165,9 @@ async function getClimateAverages(lat, lon) {
 
   return {
     temperature: Math.round(params.T2M[monthKey] * 100) / 100,
-    humidity:    Math.round(params.RH2M[monthKey] * 100) / 100,
+    humidity: Math.round(params.RH2M[monthKey] * 100) / 100,
     // ✅ multiply mm/day by days in month to get mm/month
-    rainfall:    Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
+    rainfall: Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
   };
 }
 
@@ -250,10 +250,10 @@ app.post('/post', async (req, res) => {
 // Mock Market Trends API
 app.post('/api/market-trends', (req, res) => {
   // const result = req.query.result; - if result passed as query paramenter
-  
+
   const result = req.body;
   console.log("Analysing market trends...");
-  
+
   // Return some synthetic/mock market data
   res.json({
     crop: result.top_recommendation,
@@ -262,7 +262,7 @@ app.post('/api/market-trends', (req, res) => {
     trend: ['Upward', 'Stable', 'Downward'][Math.floor(Math.random() * 3)],
     source: "KrishiMitra Simulated Market API"
   });
-  console.log("market trends sent to frontend...");  
+  console.log("market trends sent to frontend...");
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -279,12 +279,12 @@ app.post('/api/chat', async (req, res) => {
 // Roadmap Generator API
 app.get('/api/roadmap', async (req, res) => {
   try {
-    const { crop, landSize, landUnit } = req.query;
+    const { crop, landSize, landUnit, lang } = req.query;
     if (!crop || !landSize) {
       return res.status(400).json({ error: "Crop and landSize are required" });
     }
-    
-    const roadmapData = await generateRoadmap(crop, parseFloat(landSize), landUnit || 'acres');
+
+    const roadmapData = await generateRoadmap(crop, parseFloat(landSize), landUnit || 'acres', lang || 'en');
     res.json(roadmapData);
   } catch (error) {
     console.error("Roadmap API error:", error);
@@ -300,130 +300,214 @@ app.get('/api/roadmap', async (req, res) => {
 const otps = {};
 
 app.post('/api/send-otp', (req, res) => {
-    const { phone } = req.body;
-    if (!phone || !/^\d{10}$/.test(phone)) {
-        return res.status(400).json({ error: "Valid 10-digit phone number is required." });
-    }
-    
-    // Generate a 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otps[phone] = otp;
+  const { phone } = req.body;
+  if (!phone || !/^\d{10}$/.test(phone)) {
+    return res.status(400).json({ error: "Valid 10-digit phone number is required." });
+  }
 
-    console.log(`[DEV OTP] For phone ${phone}: ${otp}`);
+  // Generate a 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otps[phone] = otp;
 
-    // In production, integrate SMS API here (Twilio, AWS SNS, Msg91, etc.)
-    res.json({ message: "OTP sent successfully.", otp: otp /* Sent back for testing ease */ });
+  console.log(`[DEV OTP] For phone ${phone}: ${otp}`);
+
+  // In production, integrate SMS API here (Twilio, AWS SNS, Msg91, etc.)
+  res.json({ message: "OTP sent successfully.", otp: otp /* Sent back for testing ease */ });
 });
 
 app.post('/api/register', async (req, res) => {
-    const { 
-        fullName, 
-        phone, 
-        password,
-        otp,
-        landSize = 0, 
-        landUnit = "acres" 
-    } = req.body;
-    
-    if (!fullName || !phone || !password || !otp) {
-        return res.status(400).json({ error: "Missing required fields (name, phone, password, otp)." });
-    }
+  const {
+    fullName,
+    phone,
+    password,
+    otp,
+    landSize = 0,
+    landUnit = "acres"
+  } = req.body;
 
-    if (otps[phone] !== otp) {
-        return res.status(401).json({ error: "Invalid or expired OTP." });
-    }
+  if (!fullName || !phone || !password || !otp) {
+    return res.status(400).json({ error: "Missing required fields (name, phone, password, otp)." });
+  }
+
+  if (otps[phone] !== otp) {
+    return res.status(401).json({ error: "Invalid or expired OTP." });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Fallbacks for the simplified form
+    const state = "";
+    const district = "";
+    const village = "";
+    const cropType = "";
+
+    const sql = `INSERT INTO users (full_name, phone, state, district, village, land_size, land_unit, crop_type, password_hash) 
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
+    const params = [fullName, phone, state, district, village, landSize, landUnit, cropType, passwordHash];
 
     try {
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+      const result = await db.query(sql, params);
 
-        // Fallbacks for the simplified form
-        const state = "";
-        const district = "";
-        const village = "";
-        const cropType = "";
+      // Clean up OTP after successful registration
+      delete otps[phone];
 
-        const sql = `INSERT INTO users (full_name, phone, state, district, village, land_size, land_unit, crop_type, password_hash) 
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
-        const params = [fullName, phone, state, district, village, landSize, landUnit, cropType, passwordHash];
-        
-        try {
-            const result = await db.query(sql, params);
-            
-            // Clean up OTP after successful registration
-            delete otps[phone];
-
-            const userId = result.rows[0].id;
-            const token = jwt.sign({ id: userId, phone }, JWT_SECRET, { expiresIn: '7d' });
-            res.status(201).json({ 
-                message: "User registered successfully", 
-                token, 
-                user: { id: userId, name: fullName, phone } 
-            });
-        } catch (err) {
-            // PostgreSQL unique constraint error code is 23505
-            if (err.code === '23505') {
-                return res.status(409).json({ error: "Phone number already registered." });
-            }
-            console.error("DB Error:", err);
-            return res.status(500).json({ error: "Database error during registration." });
-        }
-    } catch (e) {
-        res.status(500).json({ error: "Server error during registration." });
+      const userId = result.rows[0].id;
+      const token = jwt.sign({ id: userId, phone }, JWT_SECRET, { expiresIn: '7d' });
+      res.status(201).json({
+        message: "User registered successfully",
+        token,
+        user: { id: userId, name: fullName, phone }
+      });
+    } catch (err) {
+      // PostgreSQL unique constraint error code is 23505
+      if (err.code === '23505') {
+        return res.status(409).json({ error: "Phone number already registered." });
+      }
+      console.error("DB Error:", err);
+      return res.status(500).json({ error: "Database error during registration." });
     }
+  } catch (e) {
+    res.status(500).json({ error: "Server error during registration." });
+  }
 });
 
 app.post('/api/login', async (req, res) => {
-    const { phone, password } = req.body;
+  const { phone, password } = req.body;
 
-    if (!phone || !password) {
-        return res.status(400).json({ error: "Phone and password required." });
-    }
+  if (!phone || !password) {
+    return res.status(400).json({ error: "Phone and password required." });
+  }
 
-    const sql = `SELECT * FROM users WHERE phone = $1`;
-    try {
-        const result = await db.query(sql, [phone]);
-        const user = result.rows[0];
+  const sql = `SELECT * FROM users WHERE phone = $1`;
+  try {
+    const result = await db.query(sql, [phone]);
+    const user = result.rows[0];
 
-        if (!user) return res.status(401).json({ error: "Invalid phone number or password." });
+    if (!user) return res.status(401).json({ error: "Invalid phone number or password." });
 
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(401).json({ error: "Invalid phone number or password." });
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) return res.status(401).json({ error: "Invalid phone number or password." });
 
-        const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
-        
-        res.json({
-            message: "Login successful",
-            token,
-            user: {
-                id: user.id,
-                name: user.full_name,
-                phone: user.phone,
-                state: user.state,
-                cropType: user.crop_type
-            }
-        });
-    } catch (err) {
-        console.error("DB Login Error:", err);
-        return res.status(500).json({ error: "Database error." });
-    }
+    const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.full_name,
+        phone: user.phone,
+        state: user.state,
+        cropType: user.crop_type
+      }
+    });
+  } catch (err) {
+    console.error("DB Login Error:", err);
+    return res.status(500).json({ error: "Database error." });
+  }
 });
 
 app.post('/api/analyze-disease', async (req, res) => {
-    // Note: Request body size limit in Express defaults to 100kb, 
-    // but json() might have been configured. We'll handle errors gracefully.
-    const { imageBase64 } = req.body;
-    if (!imageBase64) {
-        return res.status(400).json({ error: "No imageBase64 data provided." });
-    }
+  // Note: Request body size limit in Express defaults to 100kb, 
+  // but json() might have been configured. We'll handle errors gracefully.
+  const { imageBase64 } = req.body;
+  if (!imageBase64) {
+    return res.status(400).json({ error: "No imageBase64 data provided." });
+  }
 
-    try {
-        const analysisData = await analyzePestImage(imageBase64);
-        res.json(analysisData);
-    } catch (error) {
-        console.error("Error in /api/analyze-disease:", error);
-        res.status(500).json({ error: "Failed to analyze the image." });
+  try {
+    const analysisData = await analyzePestImage(imageBase64);
+    res.json(analysisData);
+  } catch (error) {
+    console.error("Error in /api/analyze-disease:", error);
+    res.status(500).json({ error: "Failed to analyze the image." });
+  }
+});
+
+// Pest Prediction API
+app.get('/api/pest-prediction', async (req, res) => {
+  try {
+    const { crop, lang } = req.query;
+    if (!crop) return res.status(400).json({ error: 'crop is required' });
+    const data = await getPestPrediction(crop, lang || 'en');
+    res.json(data);
+  } catch (error) {
+    console.error('Pest Prediction API error:', error);
+    res.status(500).json({ error: 'Failed to generate pest prediction.' });
+  }
+});
+
+// Get authenticated user profile (for land size)
+app.get('/api/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided.' });
     }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const result = await db.query(
+      'SELECT id, full_name, phone, land_size, land_unit FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Auth /api/me error:', err);
+    res.status(401).json({ error: 'Invalid token.' });
+  }
+});
+
+// ── Helper: extract user id from Bearer token ─────────────────────────────────
+function getUserIdFromToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    return decoded.id;
+  } catch { return null; }
+}
+
+// Save (Upsert) Crop Analysis Result for logged-in user
+app.post('/api/save-analysis', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const { analysis } = req.body;
+    if (!analysis) return res.status(400).json({ error: 'analysis payload required.' });
+
+    // Upsert: insert if not exists, update if already exists (one row per user)
+    await db.query(`
+      INSERT INTO crop_analysis_cache (user_id, analysis_data, analysed_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id)
+      DO UPDATE SET analysis_data = EXCLUDED.analysis_data, analysed_at = NOW()
+    `, [userId, JSON.stringify(analysis)]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save analysis error:', err);
+    res.status(500).json({ error: 'Failed to save analysis.' });
+  }
+});
+
+// Load cached Crop Analysis for logged-in user
+app.get('/api/my-analysis', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const result = await db.query(
+      'SELECT analysis_data, analysed_at FROM crop_analysis_cache WHERE user_id = $1',
+      [userId]
+    );
+    if (!result.rows[0]) return res.json({ analysis: null });
+    res.json({ analysis: result.rows[0].analysis_data, analysed_at: result.rows[0].analysed_at });
+  } catch (err) {
+    console.error('Load analysis error:', err);
+    res.status(500).json({ error: 'Failed to load analysis.' });
+  }
 });
 
 async function startServer() {
@@ -433,7 +517,7 @@ async function startServer() {
 
     // 2. Load other data
     // nutrientData is already loaded at the top level, but let's make sure things are sequential
-    
+
     // 3. Start Listening
     const server = app.listen(port, () => {
       console.log(`KrishiMitra server is live at http://localhost:${port}`);

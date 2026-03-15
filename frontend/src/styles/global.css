@@ -645,3 +645,195 @@ footer {
     border-radius: 0;
   }
 }
+
+/* =========================================================================
+   ROADMAP SUB-NAVBAR
+   ========================================================================= */
+.sub-navbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(46,125,50,0.12);
+  position: sticky;
+  top: 70px;
+  z-index: 99;
+}
+
+.sub-tab {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+}
+
+.sub-tab:hover {
+  background: rgba(46,125,50,0.06);
+  color: var(--primary);
+}
+
+.sub-tab.active {
+  background: rgba(46,125,50,0.12);
+  color: var(--primary-dark);
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+/* =========================================================================
+   RESOURCES SUMMARY TABLE
+   ========================================================================= */
+.resources-summary-box {
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+  border: 1px solid #a5d6a7;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.resources-summary-box h3 {
+  color: var(--primary-dark);
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.resources-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.resources-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: rgba(46,125,50,0.1);
+  color: var(--primary-dark);
+  font-weight: 700;
+  border-radius: 6px 6px 0 0;
+}
+
+.resources-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(46,125,50,0.1);
+  color: var(--text-main);
+}
+
+.resources-table tr:last-child td { border-bottom: none; }
+
+.resources-table tr:hover td {
+  background: rgba(46,125,50,0.04);
+}
+
+/* =========================================================================
+   PEST THREAT CARDS
+   ========================================================================= */
+.pest-threat-card {
+  background: #fff;
+  border: 1px solid #ffcdd2;
+  border-left: 4px solid #e53935;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pest-threat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(229,57,53,0.1);
+}
+
+.pest-threat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.pest-threat-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #c62828;
+  display: block;
+}
+
+.pest-threat-type {
+  font-size: 0.78rem;
+  background: #fce4ec;
+  color: #b71c1c;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.pest-severity-badge {
+  font-size: 0.75rem;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.pest-threat-when {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.pest-threat-desc {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.pest-threat-prevention {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.pest-threat-prevention strong {
+  color: #2e7d32;
+}
+
+.pest-threat-prevention ul {
+  padding-left: 18px;
+  margin-top: 5px;
+  line-height: 1.6;
+}
+
+/* =========================================================================
+   PEST UPLOAD DROPZONE
+   ========================================================================= */
+.pest-upload-box {
+  border: 2px dashed rgba(46,125,50,0.4);
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: rgba(46,125,50,0.03);
+}
+
+.pest-upload-box:hover, .pest-upload-box.drag-over {
+  border-color: var(--primary);
+  background: rgba(46,125,50,0.07);
+}
+
+.pest-upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.pest-upload-box p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

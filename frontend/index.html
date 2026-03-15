@@ -12,7 +12,7 @@
     <meta name="theme-color" content="#ffffff">
 </head>
 <body>
-    <!-- Top Navigation Bar (Phase 5) -->
+    <!-- Top Navigation Bar -->
     <nav class="top-navbar">
         <div class="nav-left">
             <h1 class="nav-logo">KrishiMitra</h1>
@@ -23,7 +23,6 @@
             <button class="nav-tab" data-target="tab-pest" data-i18n="tabPest">Pest Protection</button>
         </div>
         <div class="nav-right">
-            <!-- Language Toggle -->
             <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language switcher">
                 <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
                 <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
@@ -62,34 +61,72 @@
                 </div>
             </section>
 
-            <!-- Tab 2: Resource Roadmap -->
+            <!-- Tab 2: Resource Roadmap with Sub-tabs -->
             <section id="tab-roadmap" class="tab-content hidden">
+                <!-- Roadmap Sub-navbar -->
+                <div class="sub-navbar" id="roadmap-sub-navbar">
+                    <button class="sub-tab active" id="sub-tab-timeline" data-subtarget="subtab-timeline" data-i18n="roadmapSubTimeline">Timeline</button>
+                    <button class="sub-tab" id="sub-tab-resources" data-subtarget="subtab-resources" data-i18n="roadmapSubResources">Resources</button>
+                </div>
+
                 <div class="dashboard-grid">
-                    <!-- 3. Resource Roadmap Card -->
-                    <div class="card roadmap-card" id="roadmap-card">
-                        <!-- Roadmap injected here dynamically, initially empty but card visible if tab is clicked -->
-                        <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">Resource Management Roadmap</h2>
-                        <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized resource roadmap.</p>
+                    <!-- Sub-Tab: Timeline -->
+                    <div id="subtab-timeline" class="sub-tab-content">
+                        <div class="card roadmap-card" id="roadmap-timeline-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">Resource Management Roadmap</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized roadmap.</p>
+                        </div>
+                    </div>
+
+                    <!-- Sub-Tab: Resources -->
+                    <div id="subtab-resources" class="sub-tab-content hidden">
+                        <div class="card roadmap-card" id="roadmap-resources-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapResourcesTitle">Required Resources</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized resource plan.</p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Tab 3: Pest Detection -->
+            <!-- Tab 3: Pest Protection (Predictions + Image Upload) -->
             <section id="tab-pest" class="tab-content hidden">
-                <div class="dashboard-grid">
-                    <!-- 4. Pest Detection Card -->
-                    <div class="card pest-card" id="pest-card">
-                        <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestTitle">Crop Disease & Pest Detection</h2>
-                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;" data-i18n="pestDesc">Upload a leaf photo for an instant AI diagnosis and treatment plan.</p>
-                        <div class="action-area">
-                            <input type="file" id="pest-image-upload-dashboard" accept="image/*" style="margin-bottom: 15px; width: 100%;" />
-                            <button id="analyze-pest-btn" class="primary-btn" style="background: var(--bg-card); color: var(--primary-color); border: 2px solid var(--primary-color);">
-                                <span data-i18n="pestBtn">Analyze Leaf</span>
-                            </button>
-                            <p id="pest-status-message" class="status"></p>
+                <!-- Pest Sub-navbar -->
+                <div class="sub-navbar" id="pest-sub-navbar">
+                    <button class="sub-tab active" data-subtarget="subtab-pest-threats" data-i18n="pestExpectedTitle">Expected Threats</button>
+                    <button class="sub-tab" data-subtarget="subtab-pest-detect" data-i18n="tabPestDetect">Pest Detection</button>
+                </div>
+
+                <div class="dashboard-grid" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- Sub-Tab: Expected Pest Threats -->
+                    <div id="subtab-pest-threats" class="sub-tab-content">
+                        <div class="card" id="pest-prediction-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestExpectedTitle">Expected Pest Threats</h2>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 14px;" data-i18n="pestExpectedDesc">AI-predicted based on your recommended crop</p>
+                            <div id="pest-prediction-content">
+                                <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to see expected pest threats.</p>
+                            </div>
                         </div>
-                        <div id="pest-results-container" class="results hidden" style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                            <!-- Pest results injected here -->
+                    </div>
+
+                    <!-- Sub-Tab: Image Upload Diagnosis -->
+                    <div id="subtab-pest-detect" class="sub-tab-content hidden">
+                        <div class="card pest-card" id="pest-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestTitle">Crop Disease & Pest Detection</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;" data-i18n="pestDesc">Upload a leaf photo for an instant AI diagnosis and treatment plan.</p>
+                            <div class="pest-upload-box" id="pest-upload-dropzone">
+                                <div class="pest-upload-icon">📷</div>
+                                <p data-i18n="pestUploadHint">Click to select or drag & drop a leaf photo</p>
+                                <input type="file" id="pest-image-upload-dashboard" accept="image/*" style="display: none;" />
+                            </div>
+                            <div class="action-area" style="margin-top: 12px;">
+                                <button id="analyze-pest-btn" class="primary-btn" style="background: var(--bg-card); color: var(--primary-color); border: 2px solid var(--primary-color);">
+                                    <span data-i18n="pestBtn">Analyze Leaf</span>
+                                </button>
+                                <p id="pest-status-message" class="status"></p>
+                            </div>
+                            <div id="pest-results-container" class="results hidden" style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                                <!-- Pest results injected here -->
+                            </div>
                         </div>
                     </div>
                 </div>

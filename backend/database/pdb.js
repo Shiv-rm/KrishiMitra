@@ -52,6 +52,17 @@ const initializeDB = async () => {
             )
         `);
 
+        // Create Crop Analysis Cache Table (one row per user, upserted on new analysis)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS crop_analysis_cache (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER UNIQUE NOT NULL,
+                analysis_data JSONB NOT NULL,
+                analysed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        `);
+
         client.release();
     } catch (err) {
         console.error('Error initializing database:', err.stack);
