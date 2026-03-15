@@ -75,11 +75,11 @@ def predict():
         top_crop = recommendations[0]
         
         output = {
-            "recommendation": top_crop["crop"],
-            "recommendations": recommendations,
-            "yield_forecast": top_crop["yield_forecast"],
-            "profit_margin": top_crop["profit_margin"],
-            "sustainability_score": top_crop["sustainability_score"]
+            "top_recommendation": top_crop["crop"],
+            "top_yield_forecast": top_crop["yield_forecast"],
+            "top_profit_margin": top_crop["profit_margin"],
+            "top_sustainability_score": top_crop["sustainability_score"],
+            "recommendations": recommendations
         }
         
         # Ensures stdout only has valid JSON

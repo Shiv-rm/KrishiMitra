@@ -124,6 +124,69 @@ async function geoSuccess(position) {
     await sendToBackend(latitude, longitude);
 }
 
+async function sendToBackend(latitude, longitude) {
+    const url = "/post";
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
+        });
+
+        const result = await response.json();
+        console.log("result : ", result);
+        
+
+        if (result.error) {
+            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
+            locateBtn.disabled = false;
+            return;
+        }
+
+        updateStatus("Gathering market and resource roadmap data...");
+
+        // Fetch market trends & resource roadmap for the recommended crop in parallel
+        if (result.top_recommendation) {
+            const [marketRes, roadmapData] = await Promise.allSettled([
+                // -> can send result as query parameter or in the request body
+                // 1 -> if query parameter /api/market-trends?result=${encodeURIComponent(JSON.stringify(result))}
+                // encodeURIComponent() is a JavaScript function that encodes special characters in a URL parameter so the URL remains valid.
+                // When you pass data in a URL, characters like spaces, &, ?, /, = etc. can break the URL or change its meaning.
+                // encodeURIComponent() converts them into a safe format.
+                // Most backend frameworks automatically decode query parameters.
+
+                fetch(`/api/market-trends`,{
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(result)
+                }).then(res => res.json()),
+                fetchRoadmap(result.top_recommendation)
+            ]);
+            
+            if (marketRes.status === 'fulfilled') {
+                result.market = marketRes.value;
+                console.log((marketRes.value));
+                
+            }
+            if (roadmapData.status === 'fulfilled') {
+                result.roadmap = roadmapData.value?.roadmap || null;
+            }
+            console.log("market trends fetched.");
+            
+        }
+
+        lastResult = result;
+        displayResults(result);
+        updateStatus(t("success"));
+        locateBtn.disabled = false;
+    } catch (err) {
+        console.error("Fetch error:", err.message);
+        updateStatus(`<span style="color:#c62828;">${t("connError")}</span>`);
+        locateBtn.disabled = false;
+    }
+}
+
 // ── Roadmap Helpers ───────────────────────────────────────────────────────────
 async function fetchRoadmap(crop) {
     let landSize = 1; // fallback
@@ -147,56 +210,10 @@ async function fetchRoadmap(crop) {
     }
 }
 
-async function sendToBackend(latitude, longitude) {
-    const url = "/post";
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
-        });
-
-        const result = await response.json();
-
-        if (result.error) {
-            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
-            locateBtn.disabled = false;
-            return;
-        }
-
-        updateStatus("Gathering market and resource roadmap data...");
-
-        // Fetch market trends & resource roadmap for the recommended crop in parallel
-        if (result.recommendation) {
-            const [marketRes, roadmapData] = await Promise.allSettled([
-                fetch(`/api/market-trends?crop=${result.recommendation}`).then(res => res.json()),
-                fetchRoadmap(result.recommendation)
-            ]);
-            
-            if (marketRes.status === 'fulfilled') {
-                result.market = marketRes.value;
-            }
-            if (roadmapData.status === 'fulfilled') {
-                result.roadmap = roadmapData.value?.roadmap || null;
-            }
-        }
-
-        lastResult = result;
-        displayResults(result);
-        updateStatus(t("success"));
-        locateBtn.disabled = false;
-    } catch (err) {
-        console.error("Fetch error:", err.message);
-        updateStatus(`<span style="color:#c62828;">${t("connError")}</span>`);
-        locateBtn.disabled = false;
-    }
-}
-
 // ── Results display ───────────────────────────────────────────────────────────
 function displayResults(data) {
-    const cropName = data.recommendation
-        ? data.recommendation.charAt(0).toUpperCase() + data.recommendation.slice(1)
+    const cropName = data.top_recommendation
+        ? data.top_recommendation.charAt(0).toUpperCase() + data.top_recommendation.slice(1)
         : null;
 
     let recommendationHTML = '';
@@ -239,15 +256,15 @@ function displayResults(data) {
         <div class="results-grid" style="margin-top: 15px;">
             <div class="result-item" style="background: #e3f2fd; border-color: #2196f3;">
                 <span class="result-label">Yield Forecast</span>
-                <span class="result-value" style="font-size:1.1rem">${data.yield_forecast || 'N/A'}</span>
+                <span class="result-value" style="font-size:1.1rem">${data.top_yield_forecast || 'N/A'}</span>
             </div>
             <div class="result-item" style="background: #fff3e0; border-color: #ff9800;">
                 <span class="result-label">Est. Profit Margin</span>
-                <span class="result-value">${data.profit_margin || 'N/A'}</span>
+                <span class="result-value">${data.top_profit_margin || 'N/A'}</span>
             </div>
             <div class="result-item" style="background: #e8f5e9; border-color: #4caf50;">
                 <span class="result-label">Sustainability Score</span>
-                <span class="result-value">${data.sustainability_score || 'N/A'}</span>
+                <span class="result-value">${data.top_sustainability_score || 'N/A'}</span>
             </div>
         </div>
     `;

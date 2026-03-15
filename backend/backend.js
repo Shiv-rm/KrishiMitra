@@ -14,8 +14,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 
-// Note: db.js is CommonJS, so we import it using standard import (Node 14+)
-import db from './db.js';
+// Use the PostgreSQL pool imported from pdb.js
+import { pool as db, initializeDB } from './database/pdb.js';
 
 import { getGeminiResponse, generateRoadmap, analyzePestImage } from './ai_service.js';
 
@@ -172,8 +172,6 @@ async function getClimateAverages(lat, lon) {
 }
 
 
-
-
 app.post('/post', async (req, res) => {
   const data = req.body;
   const lat = parseFloat(data.Latitude);
@@ -212,6 +210,7 @@ app.post('/post', async (req, res) => {
     const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
 
     try {
+      // takes stdout from print of predict.py as output
       const { stdout, stderr } = await execPromise(`"${pythonPath}" "${scriptPath}" ${args}`);
 
       if (stderr) {
@@ -249,18 +248,21 @@ app.post('/post', async (req, res) => {
 
 
 // Mock Market Trends API
-app.get('/api/market-trends', (req, res) => {
-  const { crop } = req.query;
-  const targetCrop = crop || 'wheat';
+app.post('/api/market-trends', (req, res) => {
+  // const result = req.query.result; - if result passed as query paramenter
+  
+  const result = req.body;
+  console.log("Analysing market trends...");
   
   // Return some synthetic/mock market data
   res.json({
-    crop: targetCrop,
+    crop: result.top_recommendation,
     currentPricePerQuintal: Math.floor(Math.random() * 2000) + 1500,
     demand: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
     trend: ['Upward', 'Stable', 'Downward'][Math.floor(Math.random() * 3)],
     source: "KrishiMitra Simulated Market API"
   });
+  console.log("market trends sent to frontend...");  
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -342,41 +344,47 @@ app.post('/api/register', async (req, res) => {
         const cropType = "";
 
         const sql = `INSERT INTO users (full_name, phone, state, district, village, land_size, land_unit, crop_type, password_hash) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
         const params = [fullName, phone, state, district, village, landSize, landUnit, cropType, passwordHash];
         
-        db.run(sql, params, function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE constraint failed')) {
-                    return res.status(409).json({ error: "Phone number already registered." });
-                }
-                return res.status(500).json({ error: "Database error during registration." });
-            }
+        try {
+            const result = await db.query(sql, params);
+            
             // Clean up OTP after successful registration
             delete otps[phone];
 
-            const token = jwt.sign({ id: this.lastID, phone }, JWT_SECRET, { expiresIn: '7d' });
+            const userId = result.rows[0].id;
+            const token = jwt.sign({ id: userId, phone }, JWT_SECRET, { expiresIn: '7d' });
             res.status(201).json({ 
                 message: "User registered successfully", 
                 token, 
-                user: { id: this.lastID, name: fullName, phone } 
+                user: { id: userId, name: fullName, phone } 
             });
-        });
+        } catch (err) {
+            // PostgreSQL unique constraint error code is 23505
+            if (err.code === '23505') {
+                return res.status(409).json({ error: "Phone number already registered." });
+            }
+            console.error("DB Error:", err);
+            return res.status(500).json({ error: "Database error during registration." });
+        }
     } catch (e) {
         res.status(500).json({ error: "Server error during registration." });
     }
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { phone, password } = req.body;
 
     if (!phone || !password) {
         return res.status(400).json({ error: "Phone and password required." });
     }
 
-    const sql = `SELECT * FROM users WHERE phone = ?`;
-    db.get(sql, [phone], async (err, user) => {
-        if (err) return res.status(500).json({ error: "Database error." });
+    const sql = `SELECT * FROM users WHERE phone = $1`;
+    try {
+        const result = await db.query(sql, [phone]);
+        const user = result.rows[0];
+
         if (!user) return res.status(401).json({ error: "Invalid phone number or password." });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -395,7 +403,10 @@ app.post('/api/login', (req, res) => {
                 cropType: user.crop_type
             }
         });
-    });
+    } catch (err) {
+        console.error("DB Login Error:", err);
+        return res.status(500).json({ error: "Database error." });
+    }
 });
 
 app.post('/api/analyze-disease', async (req, res) => {
@@ -415,7 +426,34 @@ app.post('/api/analyze-disease', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+async function startServer() {
+  try {
+    // 1. Initialize Database
+    await initializeDB();
+
+    // 2. Load other data
+    // nutrientData is already loaded at the top level, but let's make sure things are sequential
+    
+    // 3. Start Listening
+    const server = app.listen(port, () => {
+      console.log(`KrishiMitra server is live at http://localhost:${port}`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`ERROR: Port ${port} is already in use.`);
+        console.error(`Try running: kill -9 $(lsof -t -i:${port})`);
+        process.exit(1);
+      } else {
+        console.error("Server Error:", err);
+      }
+    });
+
+  } catch (err) {
+    console.error("CRITICAL: Failed to start server:", err);
+    process.exit(1);
+  }
+}
+
+startServer();
 
