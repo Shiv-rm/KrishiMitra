@@ -5,11 +5,11 @@ import os
 import warnings
 import json
 import random
-
+import pandas as pd
 warnings.filterwarnings('ignore')
 
 # Path to the model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'crop_recommendation_model.pkl')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models/crop_recommendation_xgb_model.pkl')
 
 CROP_LABELS = [
     'apple', 'banana', 'blackgram', 'chickpea', 'coconut', 'coffee', 'cotton',
@@ -17,12 +17,6 @@ CROP_LABELS = [
     'mungbean', 'muskmelon', 'orange', 'papaya', 'pigeonpeas', 'pomegranate',
     'rice', 'watermelon'
 ]
-
-SCALER_MEAN = np.array([50.5518, 53.3622, 48.1490, 25.6162, 71.4818, 6.4694, 103.4635])
-SCALER_STD  = np.array([36.9173, 32.9859, 50.6479,  5.0637, 22.2638,  0.7739,  54.9583])
-
-def scale_input(features):
-    return (features - SCALER_MEAN) / SCALER_STD
 
 def get_crop_metrics(crop_name):
     # Mocking yield (tons/acre), profit margin (%), sustainability score (0-100)
@@ -44,17 +38,48 @@ def predict():
             print(json.dumps({"error": "Expected 7 parameters: N P K temperature humidity ph rainfall"}), file=sys.stderr)
             sys.exit(1)
 
-        raw = np.array([float(arg) for arg in sys.argv[1:8]])
-        scaled = scale_input(raw).reshape(1, -1)
-        model = joblib.load(MODEL_PATH)
-        pred_index = model.predict(scaled)[0]
-        crop_name = CROP_LABELS[int(pred_index)]
+        N, P, K, temperature, humidity, ph, rainfall = [float(arg) for arg in sys.argv[1:8]]
         
-        metrics = get_crop_metrics(crop_name)
+        NPK_mean = (N + P + K) / 3.0
+        THI = (temperature * humidity) / 100.0
+
+        input_data = pd.DataFrame([{
+            'N': N,
+            'P': P,
+            'K': K,
+            'temperature': temperature,
+            'humidity': humidity,
+            'ph': ph,
+            'rainfall': rainfall,
+            'NPK_mean': NPK_mean,
+            'THI': THI
+        }])
+        
+        model = joblib.load(MODEL_PATH)
+        proba = model.predict_proba(input_data)[0]
+        
+        top_n = 2
+        ranked_idx = np.argsort(proba)[::-1][:top_n]
+        
+        recommendations = []
+        for idx in ranked_idx:
+            c_name = CROP_LABELS[int(idx)]
+            conf = float(proba[idx] * 100)
+            c_metrics = get_crop_metrics(c_name)
+            recommendations.append({
+                "crop": c_name,
+                "confidence": round(conf, 2),
+                **c_metrics
+            })
+        
+        top_crop = recommendations[0]
         
         output = {
-            "recommendation": crop_name,
-            **metrics
+            "recommendation": top_crop["crop"],
+            "recommendations": recommendations,
+            "yield_forecast": top_crop["yield_forecast"],
+            "profit_margin": top_crop["profit_margin"],
+            "sustainability_score": top_crop["sustainability_score"]
         }
         
         # Ensures stdout only has valid JSON

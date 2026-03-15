@@ -199,13 +199,41 @@ function displayResults(data) {
         ? data.recommendation.charAt(0).toUpperCase() + data.recommendation.slice(1)
         : null;
 
-    const recommendationHTML = cropName ? `
+    let recommendationHTML = '';
+    if (data.recommendations && data.recommendations.length > 0) {
+        recommendationHTML = `
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--text-main); margin-bottom: 12px; font-weight: 600;">Top Crop Candidates</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${data.recommendations.map((rec, idx) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: ${idx === 0 ? 'rgba(76, 175, 80, 0.1)' : '#fafafa'}; padding: 15px 20px; border-radius: 10px; border: 1px solid ${idx === 0 ? '#4caf50' : '#eee'};">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 1.3rem; font-weight: 700; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'}; text-transform: capitalize;">${rec.crop}</span>
+                                <span style="font-size: 0.85rem; color: ${idx === 0 ? '#2e7d32' : 'var(--text-muted)'}; font-weight: 600;">
+                                    ${idx === 0 ? t("bestMatch") || 'Best Match' : 'Potential Alternative'}
+                                </span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                                <div style="display: flex; align-items: baseline; gap: 2px;">
+                                    <span style="font-size: 1.5rem; font-weight: 800; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'};">${rec.confidence}</span>
+                                    <span style="font-size: 1rem; font-weight: 600; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'};">%</span>
+                                </div>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Confidence</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else if (cropName) {
+        recommendationHTML = `
         <div class="recommendation-banner">
             <span class="recommendation-label">${t("recommendedCrop")}</span>
             <span class="recommendation-crop">${cropName}</span>
             <span class="recommendation-sub">${t("bestMatch")}</span>
         </div>
-    ` : '';
+        `;
+    }
 
     const forecastsHTML = `
         <div class="results-grid" style="margin-top: 15px;">

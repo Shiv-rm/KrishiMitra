@@ -3,13 +3,13 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 // Create Gemini instance
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 /**
  * Sends a message and optional base64 image to Gemini and returns the reply.
  */
 export async function getGeminiResponse(message, base64Image = null) {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     return "Error: GEMINI_API_KEY is not configured on the server.";
   }
 
@@ -73,7 +73,7 @@ export async function getGeminiResponse(message, base64Image = null) {
  * Returns a JSON object containing the timeline and resource requirements.
  */
 export async function generateRoadmap(crop, landSize, landUnit = 'acres') {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
@@ -126,7 +126,7 @@ Format the JSON exactly like this:
  * Returns a JSON object with disease, analysis, treatments, and prevention.
  */
 export async function analyzePestImage(base64Image) {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 

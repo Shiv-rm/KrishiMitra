@@ -207,7 +207,7 @@ app.post('/post', async (req, res) => {
 
     // Call Python script for crop prediction
     // Feature order matches training: N, P, K, temperature, humidity, ph, rainfall
-    const pythonPath = path.join(__dirname, '..', '.venv', 'bin', 'python');
+    const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
     const scriptPath = path.join(__dirname, 'predict.py');
     const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
 
