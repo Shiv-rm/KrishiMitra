@@ -8,7 +8,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 /**
  * Sends a message and optional base64 image to Groq and returns the reply.
  */
-export async function getGroqResponse(message, base64Image = null) {
+export async function getGroqResponse(message, base64Image = null, lang = 'en') {
   if (!process.env.GROQ_API_KEY) {
     return "Error: GROQ_API_KEY is not configured on the server.";
   }
@@ -19,6 +19,15 @@ export async function getGroqResponse(message, base64Image = null) {
     // Determine the model based on whether an image is present
     const model = base64Image ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
 
+    const systemInstruction = lang === 'hi'
+      ? "आप कृषिमित्र AI हैं, एक विशेषज्ञ कृषि सहायक। प्रश्नों का उत्तर स्पष्ट रूप से दें। यदि कोई पौधे की छवि दिखाई जाती है, तो किसी भी फसल रोग का पता लगाएं और संक्षिप्त, व्यावहारिक उपचार प्रदान करें। प्रतिक्रियाओं को सहायक और पढ़ने में आसान रखें। आपकी पूरी प्रतिक्रिया हिंदी भाषा में होनी चाहिए।"
+      : "You are KrishiMitra AI, an expert agricultural assistant. Answer questions clearly. If shown an image of a plant, detect any crop diseases and provide concise, practical remedies. Keep responses helpful and easy to read. Your entire response MUST be in English.";
+
+    messages.push({
+      role: "system",
+      content: systemInstruction
+    });
+
     if (base64Image) {
       // Decode the data URL into mimeType and base64 string
       const match = base64Image.match(/^data:(image\/[a-zA-Z]*);base64,([^\"]*)$/);
@@ -28,7 +37,7 @@ export async function getGroqResponse(message, base64Image = null) {
       messages.push({
         role: "user",
         content: [
-          { type: 'text', text: message || "What do you see in this image? Assess any crop diseases or issues if visible." },
+          { type: 'text', text: message || (lang === 'hi' ? "आप इस छवि में क्या देखते हैं? यदि दिखाई दे तो किसी भी फसल रोग या समस्या का आकलन करें।" : "What do you see in this image? Assess any crop diseases or issues if visible.") },
           {
             type: 'image_url',
             image_url: {
@@ -56,7 +65,9 @@ export async function getGroqResponse(message, base64Image = null) {
     return response.choices[0].message.content;
   } catch (error) {
     console.error("Groq API Error:", error);
-    return "I'm having trouble connecting to my AI service right now. Please try again later.";
+    return lang === 'hi' 
+      ? "मुझे अभी अपनी AI सेवा से जुड़ने में समस्या हो रही है। कृपया बाद में पुनः प्रयास करें।"
+      : "I'm having trouble connecting to my AI service right now. Please try again later.";
   }
 }
 
@@ -180,15 +191,21 @@ Format:
 /**
  * Analyzes an image of a plant/leaf for diseases/pests using Groq Vision.
  */
-export async function analyzePestImage(base64Image) {
+export async function analyzePestImage(base64Image, lang = 'en') {
   if (!process.env.GROQ_API_KEY) {
     throw new Error("GROQ_API_KEY is not configured.");
   }
 
   try {
+    const langInstruction = lang === 'hi'
+      ? 'CRITICAL: ALL text values in the JSON (disease, analysis, treatments array, prevention array) MUST be in Hindi language.'
+      : 'All text values in the JSON MUST be in English language.';
+
     const prompt = `
 You are an expert plant pathologist and agrarian scientist. Analyze this image of a plant/leaf.
 Identify any diseases, pests, or nutrient deficiencies visible.
+
+${langInstruction}
 
 You MUST respond strictly with valid JSON. Return only the JSON object.
 Format the JSON exactly like this:

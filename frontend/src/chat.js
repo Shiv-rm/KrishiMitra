@@ -1,4 +1,4 @@
-import { t } from './i18n/i18n.js';
+import { t, getLang } from './i18n/i18n.js';
 
 // Chat Interface Logic
 const fab = document.getElementById('ai-chat-fab');
@@ -71,7 +71,7 @@ async function sendMessage(text = '', base64Image = null) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: text, image: base64Image })
+            body: JSON.stringify({ message: text, image: base64Image, lang: getLang() })
         });
         
         const data = await response.json();

@@ -247,7 +247,7 @@ async function loadCachedAnalysis() {
             lastResult = data.analysis;
             displayResults(data.analysis);
             const when = new Date(data.analysed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-            updateStatus(`✅ Showing last analysis from ${when}. Click "Analyze My Location" to refresh.`);
+            updateStatus(`Showing last analysis from ${when}. Click "Analyze My Location" to refresh.`);
         }
     } catch (e) { console.warn('Could not load cached analysis:', e); }
 }
@@ -281,14 +281,14 @@ function displayResults(data) {
     if (data.recommendations && data.recommendations.length > 0) {
         recommendationHTML = `
             <div style="margin-bottom: 20px;">
-                <h3 style="color: var(--text-main); margin-bottom: 12px; font-weight: 600;">Top Crop Candidates</h3>
+                <h3 style="color: var(--text-main); margin-bottom: 12px; font-weight: 600;">${t('dashTopCrops')}</h3>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     ${data.recommendations.map((rec, idx) => `
                         <div style="display: flex; justify-content: space-between; align-items: center; background: ${idx === 0 ? 'rgba(76, 175, 80, 0.1)' : '#fafafa'}; padding: 15px 20px; border-radius: 10px; border: 1px solid ${idx === 0 ? '#4caf50' : '#eee'};">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <span style="font-size: 1.3rem; font-weight: 700; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'}; text-transform: capitalize;">${rec.crop}</span>
                                 <span style="font-size: 0.85rem; color: ${idx === 0 ? '#2e7d32' : 'var(--text-muted)'}; font-weight: 600;">
-                                    ${idx === 0 ? t("bestMatch") || 'Best Match' : 'Potential Alternative'}
+                                    ${idx === 0 ? t("bestMatch") : t("dashPotentialAlt")}
                                 </span>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
@@ -296,7 +296,7 @@ function displayResults(data) {
                                     <span style="font-size: 1.5rem; font-weight: 800; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'};">${rec.confidence}</span>
                                     <span style="font-size: 1rem; font-weight: 600; color: ${idx === 0 ? '#2e7d32' : 'var(--text-main)'};">%</span>
                                 </div>
-                                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Confidence</span>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">${t('dashConfidence')}</span>
                             </div>
                         </div>
                     `).join('')}
@@ -316,15 +316,15 @@ function displayResults(data) {
     const forecastsHTML = `
         <div class="results-grid" style="margin-top: 15px;">
             <div class="result-item" style="background: #e3f2fd; border-color: #2196f3;">
-                <span class="result-label">Yield Forecast</span>
+                <span class="result-label">${t('dashYieldForecast')}</span>
                 <span class="result-value" style="font-size:1.1rem">${data.top_yield_forecast || 'N/A'}</span>
             </div>
             <div class="result-item" style="background: #fff3e0; border-color: #ff9800;">
-                <span class="result-label">Est. Profit Margin</span>
+                <span class="result-label">${t('dashProfitMargin')}</span>
                 <span class="result-value">${data.top_profit_margin || 'N/A'}</span>
             </div>
             <div class="result-item" style="background: #e8f5e9; border-color: #4caf50;">
-                <span class="result-label">Sustainability Score</span>
+                <span class="result-label">${t('dashSustainScore')}</span>
                 <span class="result-value">${data.top_sustainability_score || 'N/A'}</span>
             </div>
         </div>
@@ -334,9 +334,9 @@ function displayResults(data) {
     if (data.market) {
         marketContainer.innerHTML = `
             <div style="display: flex; gap: 20px; font-size: 0.95rem; color: var(--text-muted);">
-                <div><strong>Price:</strong> ₹${data.market.currentPricePerQuintal}/q</div>
-                <div><strong>Demand:</strong> <span style="color: ${data.market.demand === 'High' ? '#2e7d32' : 'inherit'}; font-weight:600;">${data.market.demand}</span></div>
-                <div><strong>Trend:</strong> <span style="font-weight:600;">${data.market.trend}</span></div>
+                <div><strong>${t('dashPrice')}</strong> ₹${data.market.currentPricePerQuintal}/q</div>
+                <div><strong>${t('dashDemand')}</strong> <span style="color: ${data.market.demand === 'High' ? '#2e7d32' : 'inherit'}; font-weight:600;">${data.market.demand}</span></div>
+                <div><strong>${t('dashTrend')}</strong> <span style="font-weight:600;">${data.market.trend}</span></div>
             </div>
         `;
         marketCard.classList.remove("hidden");
@@ -348,7 +348,7 @@ function displayResults(data) {
     if (data.timeline && data.timeline.length > 0) {
         roadmapTimelineCard.innerHTML = `
             <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapTitle">${t('roadmapTitle')}</h2>
-            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">${cropName ? `📍 ${cropName}` : ''}</p>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">${cropName ? `${cropName}` : ''}</p>
             <h3 style="color: var(--primary-color); font-size: 1rem; margin-bottom: 12px;" data-i18n="roadmapSubTimeline">${t('roadmapSubTimeline')}</h3>
             <div class="roadmap-timeline">
                 ${data.timeline.map(step => `
@@ -395,9 +395,9 @@ function displayResults(data) {
 
         roadmapResourcesCard.innerHTML = `
             <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapResourcesTitle">${t('roadmapResourcesTitle')}</h2>
-            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">📐 ${userProfile.land_size} ${userProfile.land_unit}</p>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">${userProfile.land_size} ${userProfile.land_unit}</p>
             ${totalSummaryHTML}
-            <h3 style="color: var(--primary-color); font-size: 1rem; margin: 20px 0 12px;" data-i18n="roadmapSubResources">${t('roadmapSubResources')} by Phase</h3>
+            <h3 style="color: var(--primary-color); font-size: 1rem; margin: 20px 0 12px;" data-i18n="roadmapSubResources">${t('roadmapSubResources')} ${t('dashByPhase')}</h3>
             <div class="roadmap-timeline">
                 ${data.resources.map(res => `
                     <div class="roadmap-step">
@@ -407,7 +407,7 @@ function displayResults(data) {
                                 <strong>${res.item}</strong>
                                 <span class="roadmap-step-time">${res.phase}</span>
                             </div>
-                            <p class="roadmap-step-resources">📦 <strong>${res.quantity}</strong></p>
+                            <p class="roadmap-step-resources"><strong>${res.quantity}</strong></p>
                             ${res.note ? `<p class="roadmap-step-action" style="margin-top:4px; font-size:0.85rem;">${res.note}</p>` : ''}
                         </div>
                     </div>
@@ -433,10 +433,10 @@ function displayResults(data) {
                     </div>
                     <span class="pest-severity-badge" style="background: ${severityColor[threat.severity] || '#555'};">${threat.severity}</span>
                 </div>
-                <p class="pest-threat-when">⏰ ${threat.when}</p>
+                <p class="pest-threat-when">${threat.when}</p>
                 <p class="pest-threat-desc">${threat.description}</p>
                 <div class="pest-threat-prevention">
-                    <strong>Prevention:</strong>
+                    <strong>${t('dashPrevention')}</strong>
                     <ul>${threat.prevention.map(p => `<li>${p}</li>`).join('')}</ul>
                 </div>
             </div>
@@ -447,7 +447,7 @@ function displayResults(data) {
     resultsContainer.innerHTML = `
         ${recommendationHTML}
         ${forecastsHTML}
-        <h4 style="color: var(--text-muted); margin-top: 25px; margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Field Parameters</h4>
+        <h4 style="color: var(--text-muted); margin-top: 25px; margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">${t('dashFieldParams')}</h4>
         <div class="results-grid">
             <div class="result-item"><span class="result-label">${t("nitrogen")}</span><span class="result-value">${data.N}</span></div>
             <div class="result-item"><span class="result-label">${t("phosphorus")}</span><span class="result-value">${data.P}</span></div>
@@ -507,10 +507,10 @@ if (pestBtn) {
     pestBtn.addEventListener("click", async () => {
         const file = pestInput.files[0];
         if (!file) {
-            pestStatus.innerHTML = `<span style="color:#c62828;">Please select an image first.</span>`;
+            pestStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrSelectImg')}</span>`;
             return;
         }
-        pestStatus.innerHTML = "Analyzing image with AI...";
+        pestStatus.innerHTML = t('dashPestAnalyzing');
         pestBtn.disabled = true;
 
         try {
@@ -520,24 +520,24 @@ if (pestBtn) {
                 const response = await fetch('/api/analyze-disease', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageBase64: base64String })
+                    body: JSON.stringify({ imageBase64: base64String, lang: getLang() })
                 });
                 const data = await response.json();
                 if (!response.ok) {
-                    pestStatus.innerHTML = `<span style="color:#c62828;">${data.error || 'Failed to analyze image.'}</span>`;
+                    pestStatus.innerHTML = `<span style="color:#c62828;">${data.error || t('dashErrPestAnalyze')}</span>`;
                 } else {
                     pestStatus.innerHTML = "";
                     pestResults.innerHTML = `
-                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || 'Unknown Issue'}</h3>
-                        <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || 'No detailed analysis provided.'}</p>
+                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || t('dashPestUnknownIssue')}</h3>
+                        <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || t('dashPestNoAnalysis')}</p>
                         <div style="margin-top: 10px;">
-                            <strong style="color: #2e7d32;">Recommended Treatments:</strong>
+                            <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
                             <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
                                 ${(data.treatments || []).map(t => `<li>${t}</li>`).join('')}
                             </ul>
                         </div>
                         <div style="margin-top: 10px;">
-                            <strong style="color: #1976d2;">Preventive Measures:</strong>
+                            <strong style="color: #1976d2;">${t('dashPestPrevention')}</strong>
                             <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
                                 ${(data.prevention || []).map(p => `<li>${p}</li>`).join('')}
                             </ul>
@@ -550,7 +550,7 @@ if (pestBtn) {
             reader.readAsDataURL(file);
         } catch (err) {
             console.error("Pest analysis error:", err);
-            pestStatus.innerHTML = `<span style="color:#c62828;">Connection error.</span>`;
+            pestStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrConnection')}</span>`;
             pestBtn.disabled = false;
         }
     });

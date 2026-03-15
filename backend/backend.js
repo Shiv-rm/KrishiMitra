@@ -119,7 +119,7 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (preview.trimStart().startsWith("<"))
     throw new Error(`WCS error: ${preview}`);
 
-  // ✅ use named import directly, no dynamic import
+  // use named import directly, no dynamic import
   const tiff = await fromArrayBuffer(buffer);
   const image = await tiff.getImage();
   const rasters = await image.readRasters();
@@ -162,12 +162,12 @@ async function getClimateAverages(lat, lon) {
   if (!res.ok) throw new Error(`NASA POWER error: ${res.status}`);
 
   const data = await res.json();
-  const params = data.properties.parameter; // ✅ correct path
+  const params = data.properties.parameter; // correct path
 
   return {
     temperature: Math.round(params.T2M[monthKey] * 100) / 100,
     humidity: Math.round(params.RH2M[monthKey] * 100) / 100,
-    // ✅ multiply mm/day by days in month to get mm/month
+    // multiply mm/day by days in month to get mm/month
     rainfall: Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
   };
 }
@@ -268,9 +268,9 @@ app.post('/api/market-trends', (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, image } = req.body;
-    // const aiResponse = await getGeminiResponse(message, image);
-    const aiResponse = await getGroqResponse(message, image);
+    const { message, image, lang } = req.body;
+    // const aiResponse = await getGeminiResponse(message, image, lang || 'en');
+    const aiResponse = await getGroqResponse(message, image, lang || 'en');
     res.json({ reply: aiResponse });
   } catch (error) {
     console.error("Chat API error:", error);
@@ -414,13 +414,13 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/analyze-disease', async (req, res) => {
   // Note: Request body size limit in Express defaults to 100kb, 
   // but json() might have been configured. We'll handle errors gracefully.
-  const { imageBase64 } = req.body;
+  const { imageBase64, lang } = req.body;
   if (!imageBase64) {
     return res.status(400).json({ error: "No imageBase64 data provided." });
   }
 
   try {
-    const analysisData = await analyzePestImage(imageBase64);
+    const analysisData = await analyzePestImage(imageBase64, lang || 'en');
     res.json(analysisData);
   } catch (error) {
     console.error("Error in /api/analyze-disease:", error);

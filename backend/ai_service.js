@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.A
 /**
  * Sends a message and optional base64 image to Gemini and returns the reply.
  */
-export async function getGeminiResponse(message, base64Image = null) {
+export async function getGeminiResponse(message, base64Image = null, lang = 'en') {
   if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     return "Error: GEMINI_API_KEY is not configured on the server.";
   }
@@ -36,7 +36,7 @@ export async function getGeminiResponse(message, base64Image = null) {
         if (!message) {
            contents.push({
              role: "user",
-             parts: [{ text: "What do you see in this image? Assess any crop diseases or issues if visible." }]
+             parts: [{ text: lang === 'hi' ? "आप इस छवि में क्या देखते हैं? यदि दिखाई दे तो किसी भी फसल रोग या समस्या का आकलन करें।" : "What do you see in this image? Assess any crop diseases or issues if visible." }]
            });
         }
         
@@ -50,13 +50,17 @@ export async function getGeminiResponse(message, base64Image = null) {
       }
     }
 
+    const systemInstruction = lang === 'hi'
+      ? "आप कृषिमित्र AI हैं, एक विशेषज्ञ कृषि सहायक। प्रश्नों का उत्तर स्पष्ट रूप से दें। यदि कोई पौधे की छवि दिखाई जाती है, तो किसी भी फसल रोग का पता लगाएं और संक्षिप्त, व्यावहारिक उपचार प्रदान करें। प्रतिक्रियाओं को सहायक और पढ़ने में आसान रखें। आपकी पूरी प्रतिक्रिया हिंदी भाषा में होनी चाहिए।"
+      : "You are KrishiMitra AI, an expert agricultural assistant. Answer questions clearly. If shown an image of a plant, detect any crop diseases and provide concise, practical remedies. Keep responses helpful and easy to read. Your entire response MUST be in English.";
+
     // A system instruction is helpful for the specific use case
     const model = 'gemini-2.5-flash';
     const response = await ai.models.generateContent({
       model: model,
       contents: contents,
       config: {
-        systemInstruction: "You are KrishiMitra AI, an expert agricultural assistant. Answer questions clearly. If shown an image of a plant, detect any crop diseases and provide concise, practical remedies. Keep responses helpful and easy to read.",
+        systemInstruction: systemInstruction,
         temperature: 0.7
       }
     });
@@ -64,7 +68,9 @@ export async function getGeminiResponse(message, base64Image = null) {
     return response.text;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "I'm having trouble connecting to my AI service right now. Please try again later.";
+    return lang === 'hi' 
+      ? "मुझे अभी अपनी AI सेवा से जुड़ने में समस्या हो रही है। कृपया बाद में पुनः प्रयास करें।"
+      : "I'm having trouble connecting to my AI service right now. Please try again later.";
   }
 }
 
@@ -200,15 +206,21 @@ Format:
  * Analyzes an image of a plant/leaf for diseases/pests using Gemini Vision.
  * Returns a JSON object with disease, analysis, treatments, and prevention.
  */
-export async function analyzePestImage(base64Image) {
+export async function analyzePestImage(base64Image, lang = 'en') {
   if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
   try {
+    const langInstruction = lang === 'hi'
+      ? 'CRITICAL: ALL text values in the JSON (disease, analysis, treatments array, prevention array) MUST be in Hindi language.'
+      : 'All text values in the JSON MUST be in English language.';
+
     const prompt = `
 You are an expert plant pathologist and agrarian scientist. Analyze this image of a plant/leaf.
 Identify any diseases, pests, or nutrient deficiencies visible.
+
+${langInstruction}
 
 You MUST respond strictly with valid JSON. Do not use markdown blocks like \`\`\`json. Return only the JSON object.
 Format the JSON exactly like this:

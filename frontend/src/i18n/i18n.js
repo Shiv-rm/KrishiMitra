@@ -136,6 +136,36 @@ const translations = {
     regStrFair: "Fair",
     regStrGood: "Good",
     regStrStrong: "Strong",
+    regOtpLabel: "Enter OTP",
+    regOtpPh: "Enter the 6-digit OTP",
+    regOtpDevNote: "In development, the OTP will be shown in an alert.",
+    regErrOtp: "Please enter the OTP.",
+    regSendingOtp: "Sending OTP...",
+    regVerifyBtn: "Verify & Register",
+    regErrOtpSend: "Could not send OTP.",
+    regErrOtpInvalid: "Invalid or expired OTP.",
+
+    // Dashboard UI
+    dashTopCrops: "Top Crop Candidates",
+    dashPotentialAlt: "Potential Alternative",
+    dashConfidence: "Confidence",
+    dashYieldForecast: "Yield Forecast",
+    dashProfitMargin: "Est. Profit Margin",
+    dashSustainScore: "Sustainability Score",
+    dashPrice: "Price:",
+    dashDemand: "Demand:",
+    dashTrend: "Trend:",
+    dashByPhase: "by Phase",
+    dashPrevention: "Prevention:",
+    dashFieldParams: "Field Parameters",
+    dashErrSelectImg: "Please select an image first.",
+    dashPestAnalyzing: "Analyzing image with AI...",
+    dashErrPestAnalyze: "Failed to analyze image.",
+    dashPestUnknownIssue: "Unknown Issue",
+    dashPestNoAnalysis: "No detailed analysis provided.",
+    dashPestTreatments: "Recommended Treatments:",
+    dashPestPrevention: "Preventive Measures:",
+    dashErrConnection: "Connection error.",
 
     // Chat UI
     chatGreeting: "Hello! Ask me about crops, diseases, or weather.",
@@ -281,6 +311,36 @@ const translations = {
     regStrFair: "ठीक",
     regStrGood: "अच्छा",
     regStrStrong: "मज़बूत",
+    regOtpLabel: "OTP दर्ज करें",
+    regOtpPh: "6-अंकों का OTP दर्ज करें",
+    regOtpDevNote: "विकास के दौरान, OTP एक अलर्ट में दिखाया जाएगा।",
+    regErrOtp: "कृपया OTP दर्ज करें।",
+    regSendingOtp: "OTP भेजा जा रहा है...",
+    regVerifyBtn: "सत्यापित करें और पंजीकरण करें",
+    regErrOtpSend: "OTP नहीं भेजा जा सका।",
+    regErrOtpInvalid: "अमान्य या समाप्त OTP।",
+
+    // Dashboard UI
+    dashTopCrops: "शीर्ष फसल उम्मीदवार",
+    dashPotentialAlt: "संभावित विकल्प",
+    dashConfidence: "आत्मविश्वास",
+    dashYieldForecast: "उपज का पूर्वानुमान",
+    dashProfitMargin: "अनुमानित लाभ मार्जिन",
+    dashSustainScore: "स्थिरता स्कोर",
+    dashPrice: "कीमत:",
+    dashDemand: "मांग:",
+    dashTrend: "रुझान:",
+    dashByPhase: "चरण के अनुसार",
+    dashPrevention: "रोकथाम:",
+    dashFieldParams: "क्षेत्र के पैरामीटर",
+    dashErrSelectImg: "कृपया पहले एक छवि चुनें।",
+    dashPestAnalyzing: "AI के साथ छवि का विश्लेषण हो रहा है...",
+    dashErrPestAnalyze: "छवि का विश्लेषण करने में विफल।",
+    dashPestUnknownIssue: "अज्ञात समस्या",
+    dashPestNoAnalysis: "कोई विस्तृत विश्लेषण प्रदान नहीं किया गया।",
+    dashPestTreatments: "अनुशंसित उपचार:",
+    dashPestPrevention: "निवारक उपाय:",
+    dashErrConnection: "कनेक्शन त्रुटि।",
 
     // Chat UI
     chatGreeting: "नमस्ते! मुझसे फसलों, बीमारियों या मौसम के बारे में पूछें।",
@@ -337,6 +397,18 @@ export function applyTranslations() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.getAttribute("data-i18n");
     el.textContent = t(key);
+  });
+
+  // Translate placeholders
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    el.setAttribute("placeholder", t(key));
+  });
+
+  // Translate titles (tooltips)
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    const key = el.getAttribute("data-i18n-title");
+    el.setAttribute("title", t(key));
   });
   // Update the html lang attribute for accessibility
   document.documentElement.lang = currentLang;

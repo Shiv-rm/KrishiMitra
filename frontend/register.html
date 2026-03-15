@@ -114,13 +114,14 @@
 
         <!-- OTP Field (Hidden initially) -->
         <div class="form-group hidden" id="grp-otp">
-          <label for="reg-otp">Enter OTP</label>
+          <label for="reg-otp" data-i18n="regOtpLabel">Enter OTP</label>
           <div class="input-wrapper">
             <input type="text" id="reg-otp" name="otp" inputmode="numeric"
               maxlength="6" autocomplete="one-time-code"
+              data-i18n-placeholder="regOtpPh"
               placeholder="Enter the 6-digit OTP" />
           </div>
-          <p style="font-size: 0.8rem; color: #1976d2; margin-top: 5px; margin-bottom: 0;">In development, the OTP will be shown in an alert.</p>
+          <p style="font-size: 0.8rem; color: #1976d2; margin-top: 5px; margin-bottom: 0;" data-i18n="regOtpDevNote">In development, the OTP will be shown in an alert.</p>
           <span class="field-error" id="otp-error"></span>
         </div>
 

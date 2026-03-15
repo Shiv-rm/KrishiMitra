@@ -27,15 +27,8 @@ btnEn.addEventListener('click', () => setLang('en'));
 btnHi.addEventListener('click', () => setLang('hi'));
 
 // Also update placeholder attributes (data-i18n doesn't handle placeholders by default)
-function applyPlaceholders() {
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
-  });
-}
-
 onLangChange(lang => {
   syncLangButtons(lang);
-  applyPlaceholders();
   // Re-validate visible errors in the new language
   if (phoneInput.classList.contains('invalid'))    phoneErr.textContent     = t('loginErrPhone');
   if (passwordInput.classList.contains('invalid')) passwordErr.textContent  = t('loginErrPassword');
@@ -43,7 +36,6 @@ onLangChange(lang => {
 
 // Init
 applyTranslations();
-applyPlaceholders();
 syncLangButtons(getLang());
 
 // ── Show / hide password ───────────────────────────────────────────────────────
@@ -144,7 +136,7 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-        throw new Error(data.error || "Login Failed");
+        throw new Error(data.error || t('loginErrGeneral'));
     }
 
     // ── On success ────────────────────────────────────────────────────────────

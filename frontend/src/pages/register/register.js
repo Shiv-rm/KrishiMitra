@@ -32,20 +32,12 @@ function syncLangButtons(lang) {
 btnEn.addEventListener('click', () => setLang('en'));
 btnHi.addEventListener('click', () => setLang('hi'));
 
-function applyPlaceholders() {
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
-  });
-}
-
 onLangChange(lang => {
   syncLangButtons(lang);
-  applyPlaceholders();
 });
 
 // Init
 applyTranslations();
-applyPlaceholders();
 syncLangButtons(getLang());
 
 // ── Validation Helpers ─────────────────────────────────────────────────────────
@@ -113,7 +105,7 @@ regSubmit.addEventListener('click', async () => {
   if (!termsInput.checked) { setErr('terms-error', 'regErrTerms'); valid = false; }
   else clearErr('terms-error');
 
-  if (otpSent && !otpInput.value.trim()) { setErr('otp-error', 'Please enter the OTP.'); valid = false; }
+  if (otpSent && !otpInput.value.trim()) { setErr('otp-error', 'regErrOtp'); valid = false; }
   else clearErr('otp-error');
 
   if (!valid) return;
@@ -124,7 +116,7 @@ regSubmit.addEventListener('click', async () => {
   // Step 1: Send OTP
   if (!otpSent) {
     regSubmit.disabled = true;
-    regBtnSpan.textContent = "Sending OTP...";
+    regBtnSpan.textContent = t('regSendingOtp');
 
     try {
       const res = await fetch('/api/send-otp', {
@@ -134,17 +126,17 @@ regSubmit.addEventListener('click', async () => {
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || "Failed to send OTP.");
+      if (!res.ok) throw new Error(data.error || t('regErrOtpSend'));
       
       otpSent = true;
       grpOtp.classList.remove('hidden');
-      regBtnSpan.textContent = "Verify & Register";
+      regBtnSpan.textContent = t('regVerifyBtn');
       regSubmit.disabled = false;
       
       // Dev mode: Show OTP in an alert
       alert(`[DEV] Your OTP is: ${data.otp}`);
     } catch (err) {
-      showBanner(err.message || "Could not send OTP.");
+      showBanner(err.message || t('regErrOtpSend'));
       regSubmit.disabled = false;
       regBtnSpan.textContent = originalText;
     }
@@ -197,6 +189,6 @@ regSubmit.addEventListener('click', async () => {
   } catch (err) {
     showBanner(err.message || t('regErrGeneral'));
     regSubmit.disabled = false;
-    regBtnSpan.textContent = "Verify & Register";
+    regBtnSpan.textContent = t('regVerifyBtn');
   }
 });
