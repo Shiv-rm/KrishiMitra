@@ -17,7 +17,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 // Use the PostgreSQL pool imported from pdb.js
 import { pool as db, initializeDB } from './database/pdb.js';
 
-import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
+// import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
+import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './groq_ai_service.js';
 
 const app = express()
 const port = 3000
@@ -268,7 +269,8 @@ app.post('/api/market-trends', (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, image } = req.body;
-    const aiResponse = await getGeminiResponse(message, image);
+    // const aiResponse = await getGeminiResponse(message, image);
+    const aiResponse = await getGroqResponse(message, image);
     res.json({ reply: aiResponse });
   } catch (error) {
     console.error("Chat API error:", error);
