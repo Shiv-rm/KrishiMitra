@@ -170,6 +170,7 @@ async function geoSuccess(position) {
 
 async function sendToBackend(latitude, longitude) {
     try {
+        console.log("Sending request to backend...");
         const response = await fetch("/post", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
