@@ -172,20 +172,34 @@ async function getClimateAverages(lat, lon) {
   };
 }
 
+function getRandomLocationInIndia() {
+  const lat = Math.random() * (37.5 - 6.5) + 6.5;
+  const lon = Math.random() * (97.5 - 68) + 68;
+
+  return {
+    latitude: lat,
+    longitude: lon
+  };
+}
+
 
 app.post('/post', async (req, res) => {
   const data = req.body;
   const lat = parseFloat(data.Latitude);
   const lon = parseFloat(data.Longitude);
 
-  console.log(`Latitude: ${lat}, Longitude: ${lon}`);
+  const randomres = getRandomLocationInIndia();
+
+  console.log(`\nLatitude: ${randomres.latitude}, Longitude: ${randomres.longitude}`);
+  getStateFromCoords(randomres.latitude, randomres.longitude)
+    .then(state => console.log(state));
 
   try {
     // Fetch all required data in parallel
     const [npk, climate, ph] = await Promise.all([
-      getNPK(lat, lon),
-      getClimateAverages(lat, lon),
-      getSoilPhWCS(lat, lon).catch(err => {
+      getNPK(randomres.latitude, randomres.longitude),
+      getClimateAverages(randomres.latitude, randomres.longitude),
+      getSoilPhWCS(randomres.latitude, randomres.longitude).catch(err => {
         console.warn("Soil pH fetch failed, falling back to 7.0:", err.message);
         return 7.0; // fallback pH
       })
