@@ -20,6 +20,9 @@ import { pool as db, initializeDB } from './database/pdb.js';
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
 import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './groq_ai_service.js';
 
+// Crop Disease Prediction
+import { analyzeCropDiseaseImage } from './disease_prediction/crop_disease_service.js';
+
 const app = express()
 const port = 3000
 
@@ -454,6 +457,22 @@ app.get('/api/pest-prediction', async (req, res) => {
     res.status(500).json({ error: 'Failed to generate pest prediction.' });
   }
 });
+
+// Crop Disease Prediction API
+app.post('/api/crop-disease-predict', async (req, res) => {
+  const { imageBase64, lang } = req.body;
+  if (!imageBase64) {
+    return res.status(400).json({ error: "No imageBase64 data provided." });
+  }
+  try {
+    const analysisData = await analyzeCropDiseaseImage(imageBase64, lang || 'en');
+    res.json(analysisData);
+  } catch (error) {
+    console.error("Error in /api/crop-disease-predict:", error);
+    res.status(500).json({ error: "Failed to analyze the image." });
+  }
+});
+
 
 // Get authenticated user profile (for land size)
 app.get('/api/me', async (req, res) => {

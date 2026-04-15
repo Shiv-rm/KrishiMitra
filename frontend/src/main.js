@@ -588,7 +588,7 @@ if (pestBtn) {
     });
 }
 
-// ── Disease Detection (image analysis) ────────────────────────────────────────
+// ── Crop Disease Detection (image analysis) ────────────────────────────────────────
 if (diseaseBtn) {
     diseaseBtn.addEventListener("click", async () => {
         const file = diseaseInput.files[0];
@@ -603,30 +603,52 @@ if (diseaseBtn) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64String = reader.result.split(',')[1];
-                const response = await fetch('/api/analyze-disease', {
+                const response = await fetch('/api/crop-disease-predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageBase64: base64String, lang: getLang(), type: 'disease' })
+                    body: JSON.stringify({ imageBase64: base64String, lang: getLang() })
                 });
                 const data = await response.json();
                 if (!response.ok) {
                     diseaseStatus.innerHTML = `<span style="color:#c62828;">${data.error || t('dashErrDiseaseAnalyze')}</span>`;
                 } else {
                     diseaseStatus.innerHTML = "";
+                    const diseaseName = (data.prediction || "Unknown Issue").replace(/___/g, " - ").replace(/_/g, " ");
+                    
+                    // Robust confidence check
+                    let confidenceDisplay = "N/A";
+                    if (data.confidence !== undefined && data.confidence !== null) {
+                        const confNum = Number(data.confidence);
+                        if (!isNaN(confNum)) {
+                            confidenceDisplay = `${confNum.toFixed(1)}%`;
+                        }
+                    }
+                    
                     diseaseResultsContainer.innerHTML = `
-                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || t('dashPestUnknownIssue')}</h3>
-                        <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || t('dashPestNoAnalysis')}</p>
-                        <div style="margin-top: 10px;">
-                            <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
-                            <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
-                                ${(data.treatments || []).map(t => `<li>${t}</li>`).join('')}
-                            </ul>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <strong style="color: #1976d2;">${t('dashPestPrevention')}</strong>
-                            <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
-                                ${(data.prevention || []).map(p => `<li>${p}</li>`).join('')}
-                            </ul>
+                        <div style="background: rgba(198, 40, 40, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(198, 40, 40, 0.2);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                                <h3 style="color: #c62828; margin: 0; font-size: 1.25rem; font-weight: 700;">${diseaseName}</h3>
+                                <div style="background: #c62828; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                                    ${confidenceDisplay} ${t('dashConfidence')}
+                                </div>
+                            </div>
+                            
+                            <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">
+                                ${data.analysis || "Our model has identified symptoms consistent with the disease mentioned above. Please view recommendations below."}
+                            </p>
+                            
+                            ${data.treatments ? `
+                            <div style="margin-top: 15px;">
+                                <strong style="color: #2e7d32;">Recommended Actions</strong>
+                                <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 8px; font-size: 0.9rem;">
+                                    ${data.treatments.map(t => `<li>${t}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : `
+                            <div style="background: #fff8e1; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #856404; margin-top: 10px;">
+                                💡 Tip: You can use our AI Chatbot for detailed treatment steps for this specific disease.
+                            </div>
+                            `}
                         </div>
                     `;
                     diseaseResultsContainer.classList.remove("hidden");
