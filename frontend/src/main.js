@@ -27,6 +27,13 @@ const pestBtn = document.getElementById("analyze-pest-btn");
 const pestStatus = document.getElementById("pest-status-message");
 const pestResults = document.getElementById("pest-results-container");
 
+// Crop Disease Prediction DOM refs
+const diseasePredictionCard = document.getElementById("disease-prediction-card");
+const diseaseResultsContainer = document.getElementById("disease-results-container");
+const diseaseStatus = document.getElementById("disease-status-message");
+const diseaseBtn = document.getElementById("analyze-disease-btn");
+const diseaseInput = document.getElementById("disease-image-upload-dashboard");
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let lastResult = null;
 let userProfile = { land_size: 1, land_unit: 'acres' }; // default fallback
@@ -176,7 +183,9 @@ async function sendToBackend(latitude, longitude) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
         });
-        const result = await response.json();
+        // const result = await response.json();
+
+        console.log("result", result);
 
         if (result.error) {
             updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
@@ -493,13 +502,35 @@ if (dropzone) {
         if (e.dataTransfer.files[0]) pestInput.files = e.dataTransfer.files;
         updateDropzonePreview();
     });
-    pestInput.addEventListener('change', updateDropzonePreview);
+    pestInput.addEventListener('change', updatePestDropzonePreview);
 }
 
-function updateDropzonePreview() {
+function updatePestDropzonePreview() {
     const file = pestInput.files[0];
     if (file && dropzone) {
         dropzone.querySelector('p').textContent = `📎 ${file.name}`;
+    }
+}
+
+// ── Disease Image Upload Dropzone ──────────────────────────────────────────────
+const diseaseDropzone = document.getElementById('disease-upload-dropzone');
+if (diseaseDropzone) {
+    diseaseDropzone.addEventListener('click', () => diseaseInput.click());
+    diseaseDropzone.addEventListener('dragover', (e) => { e.preventDefault(); diseaseDropzone.classList.add('drag-over'); });
+    diseaseDropzone.addEventListener('dragleave', () => diseaseDropzone.classList.remove('drag-over'));
+    diseaseDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        diseaseDropzone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) diseaseInput.files = e.dataTransfer.files;
+        updateDiseaseDropzonePreview();
+    });
+    diseaseInput.addEventListener('change', updateDiseaseDropzonePreview);
+}
+
+function updateDiseaseDropzonePreview() {
+    const file = diseaseInput.files[0];
+    if (file && diseaseDropzone) {
+        diseaseDropzone.querySelector('p').textContent = `📎 ${file.name}`;
     }
 }
 
@@ -521,7 +552,7 @@ if (pestBtn) {
                 const response = await fetch('/api/analyze-disease', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageBase64: base64String, lang: getLang() })
+                    body: JSON.stringify({ imageBase64: base64String, lang: getLang(), type: 'pest' })
                 });
                 const data = await response.json();
                 if (!response.ok) {
@@ -529,7 +560,7 @@ if (pestBtn) {
                 } else {
                     pestStatus.innerHTML = "";
                     pestResults.innerHTML = `
-                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || t('dashPestUnknownIssue')}</h3>
+                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || data.issue || t('dashPestUnknownIssue')}</h3>
                         <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || t('dashPestNoAnalysis')}</p>
                         <div style="margin-top: 10px;">
                             <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
@@ -553,6 +584,60 @@ if (pestBtn) {
             console.error("Pest analysis error:", err);
             pestStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrConnection')}</span>`;
             pestBtn.disabled = false;
+        }
+    });
+}
+
+// ── Disease Detection (image analysis) ────────────────────────────────────────
+if (diseaseBtn) {
+    diseaseBtn.addEventListener("click", async () => {
+        const file = diseaseInput.files[0];
+        if (!file) {
+            diseaseStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrSelectImg')}</span>`;
+            return;
+        }
+        diseaseStatus.innerHTML = t('dashDiseaseAnalyzing');
+        diseaseBtn.disabled = true;
+
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64String = reader.result.split(',')[1];
+                const response = await fetch('/api/analyze-disease', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64String, lang: getLang(), type: 'disease' })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    diseaseStatus.innerHTML = `<span style="color:#c62828;">${data.error || t('dashErrDiseaseAnalyze')}</span>`;
+                } else {
+                    diseaseStatus.innerHTML = "";
+                    diseaseResultsContainer.innerHTML = `
+                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || t('dashPestUnknownIssue')}</h3>
+                        <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || t('dashPestNoAnalysis')}</p>
+                        <div style="margin-top: 10px;">
+                            <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
+                            <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
+                                ${(data.treatments || []).map(t => `<li>${t}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <strong style="color: #1976d2;">${t('dashPestPrevention')}</strong>
+                            <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">
+                                ${(data.prevention || []).map(p => `<li>${p}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                    diseaseResultsContainer.classList.remove("hidden");
+                }
+                diseaseBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error("Disease analysis error:", err);
+            diseaseStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrConnection')}</span>`;
+            diseaseBtn.disabled = false;
         }
     });
 }

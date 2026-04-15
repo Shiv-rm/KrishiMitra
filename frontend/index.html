@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/styles/global.css">
+    <link rel="icon" href="data:,">
     <link rel="apple-touch-icon" href="/pwa-192x192.png">
     <meta name="theme-color" content="#ffffff">
 </head>
@@ -21,6 +22,7 @@
             <button class="nav-tab active" data-target="tab-predict" data-i18n="tabAnalysis">Crop Analysis</button>
             <button class="nav-tab" data-target="tab-roadmap" data-i18n="tabRoadmaps">Roadmaps</button>
             <button class="nav-tab" data-target="tab-pest" data-i18n="tabPest">Pest Protection</button>
+            <button class="nav-tab" data-target="tab-disease" data-i18n="tabDisease">Disease Prediction</button>
         </div>
         <div class="nav-right">
             <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language switcher">
@@ -88,7 +90,7 @@
                 </div>
             </section>
 
-            <!-- Tab 3: Pest Protection (Predictions + Image Upload) -->
+            <!-- Tab 3: Pest Protection -->
             <section id="tab-pest" class="tab-content hidden">
                 <!-- Pest Sub-navbar -->
                 <div class="sub-navbar" id="pest-sub-navbar">
@@ -108,25 +110,50 @@
                         </div>
                     </div>
 
-                    <!-- Sub-Tab: Image Upload Diagnosis -->
+                    <!-- Sub-Tab: Pest Detection (Image Upload) -->
                     <div id="subtab-pest-detect" class="sub-tab-content hidden">
-                        <div class="card pest-card" id="pest-card">
-                            <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestTitle">Crop Disease & Pest Detection</h2>
-                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;" data-i18n="pestDesc">Upload a leaf photo for an instant AI diagnosis and treatment plan.</p>
+                        <div class="card pest-card" id="pest-detection-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="pestTitle">Pest Protection & Detection</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;" data-i18n="pestDesc">Upload a photo of the pest or damage for diagnosis.</p>
                             <div class="pest-upload-box" id="pest-upload-dropzone">
-                                <!-- <div class="pest-upload-icon">📷</div> -->
-                                <p data-i18n="pestUploadHint">Click to select or drag & drop a leaf photo</p>
+                                <p data-i18n="pestUploadHint">Click to select or drag & drop a photo</p>
                                 <input type="file" id="pest-image-upload-dashboard" accept="image/*" style="display: none;" />
                             </div>
                             <div class="action-area" style="margin-top: 12px;">
                                 <button id="analyze-pest-btn" class="primary-btn" style="background: var(--bg-card); color: var(--primary-color); border: 2px solid var(--primary-color);">
-                                    <span data-i18n="pestBtn">Analyze Leaf</span>
+                                    <span data-i18n="pestBtn">Analyze Pest</span>
                                 </button>
                                 <p id="pest-status-message" class="status"></p>
                             </div>
                             <div id="pest-results-container" class="results hidden" style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
                                 <!-- Pest results injected here -->
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 4: Crop Disease Prediction -->
+            <section id="tab-disease" class="tab-content hidden">
+                <div class="dashboard-grid" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="card main-card" id="disease-prediction-card">
+                        <h2 data-i18n="diseasePredictionTitle">Crop Disease Prediction</h2>
+                        <p data-i18n="diseasePredictionDesc">Upload a photo of the infected leaf for AI diagnosis.</p>
+                        
+                        <div class="pest-upload-box" id="disease-upload-dropzone" style="margin-top: 20px;">
+                            <p data-i18n="diseaseUploadHint">Click to select or drag & drop a leaf photo</p>
+                            <input type="file" id="disease-image-upload-dashboard" accept="image/*" style="display: none;" />
+                        </div>
+
+                        <div class="action-area" style="margin-top: 12px;">
+                            <button id="analyze-disease-btn" class="primary-btn">
+                                <span data-i18n="diseaseBtn">Analyze Leaf</span>
+                            </button>
+                            <p id="disease-status-message" class="status"></p>
+                        </div>
+
+                        <div id="disease-results-container" class="results hidden" style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                            <!-- Disease results injected here -->
                         </div>
                     </div>
                 </div>

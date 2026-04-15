@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KrishiMitra – Register</title>
-  <meta name="description" content="Create your KrishiMitra account. Join thousands of farmers using AI-powered crop recommendations." />
+  <meta name="description"
+    content="Create your KrishiMitra account. Join thousands of farmers using AI-powered crop recommendations." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles/global.css" />
+  <link rel="icon" href="data:,">
   <link rel="apple-touch-icon" href="/pwa-192x192.png">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/src/pages/login/login.css" />
   <link rel="stylesheet" href="/src/pages/register/register.css" />
 </head>
+
 <body class="login-body">
 
   <div id="login-app">
@@ -21,7 +27,7 @@
     <!-- Language Toggle -->
     <div class="lang-toggle login-lang" role="group" aria-label="Language switcher">
       <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
-      <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
+      <button class="lang-btn" id="btn-hi" data-lang="hi">हिं</button>
     </div>
 
     <!-- Illustration -->
@@ -48,12 +54,11 @@
 
       <!-- Single Step Simplified Form -->
       <div id="reg-form-container">
-        
+
         <div class="form-group" id="grp-name">
           <label for="full-name" data-i18n="regFullName">Full Name</label>
           <div class="input-wrapper">
-            <input type="text" id="full-name" name="fullName" autocomplete="name"
-              data-i18n-placeholder="regFullNamePh"
+            <input type="text" id="full-name" name="fullName" autocomplete="name" data-i18n-placeholder="regFullNamePh"
               placeholder="Enter your full name" required />
           </div>
           <span class="field-error" id="name-error"></span>
@@ -62,10 +67,8 @@
         <div class="form-group" id="grp-phone">
           <label for="reg-phone" data-i18n="regPhone">Mobile Number</label>
           <div class="input-wrapper">
-            <input type="tel" id="reg-phone" name="phone" inputmode="numeric"
-              maxlength="10" autocomplete="tel"
-              data-i18n-placeholder="regPhonePh"
-              placeholder="Enter your 10-digit mobile number" required />
+            <input type="tel" id="reg-phone" name="phone" inputmode="numeric" maxlength="10" autocomplete="tel"
+              data-i18n-placeholder="regPhonePh" placeholder="Enter your 10-digit mobile number" required />
           </div>
           <span class="field-error" id="reg-phone-error"></span>
         </div>
@@ -75,12 +78,11 @@
           <div class="land-row">
             <div class="input-wrapper land-input">
               <input type="number" id="land-size" name="landSize" min="0.1" step="0.1"
-                data-i18n-placeholder="regLandSizePh"
-                placeholder="e.g. 2.5" required />
+                data-i18n-placeholder="regLandSizePh" placeholder="e.g. 2.5" required />
             </div>
             <div class="input-wrapper select-wrapper land-unit">
               <select id="land-unit" name="landUnit">
-                <option value="acres"   data-i18n="regAcres">Acres</option>
+                <option value="acres" data-i18n="regAcres">Acres</option>
                 <option value="hectares" data-i18n="regHectares">Hectares</option>
               </select>
             </div>
@@ -91,10 +93,8 @@
         <div class="form-group" id="grp-password">
           <label for="reg-password" data-i18n="regPassword">Password</label>
           <div class="input-wrapper">
-            <input type="password" id="reg-password" name="password"
-              autocomplete="new-password"
-              data-i18n-placeholder="regPasswordPh"
-              placeholder="Create a password (min. 6 characters)" required />
+            <input type="password" id="reg-password" name="password" autocomplete="new-password"
+              data-i18n-placeholder="regPasswordPh" placeholder="Create a password (min. 6 characters)" required />
             <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password"></button>
           </div>
           <span class="field-error" id="password-error"></span>
@@ -103,10 +103,8 @@
         <div class="form-group" id="grp-confirm">
           <label for="confirm-password" data-i18n="regConfirmPassword">Confirm Password</label>
           <div class="input-wrapper">
-            <input type="password" id="confirm-password" name="confirmPassword"
-              autocomplete="new-password"
-              data-i18n-placeholder="regConfirmPasswordPh"
-              placeholder="Re-enter your password" required />
+            <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password"
+              data-i18n-placeholder="regConfirmPasswordPh" placeholder="Re-enter your password" required />
             <button type="button" class="toggle-pw" id="toggle-confirm" aria-label="Toggle confirm password"></button>
           </div>
           <span class="field-error" id="confirm-error"></span>
@@ -116,12 +114,11 @@
         <div class="form-group hidden" id="grp-otp">
           <label for="reg-otp" data-i18n="regOtpLabel">Enter OTP</label>
           <div class="input-wrapper">
-            <input type="text" id="reg-otp" name="otp" inputmode="numeric"
-              maxlength="6" autocomplete="one-time-code"
-              data-i18n-placeholder="regOtpPh"
-              placeholder="Enter the 6-digit OTP" />
+            <input type="text" id="reg-otp" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+              data-i18n-placeholder="regOtpPh" placeholder="Enter the 6-digit OTP" />
           </div>
-          <p style="font-size: 0.8rem; color: #1976d2; margin-top: 5px; margin-bottom: 0;" data-i18n="regOtpDevNote">In development, the OTP will be shown in an alert.</p>
+          <p style="font-size: 0.8rem; color: #1976d2; margin-top: 5px; margin-bottom: 0;" data-i18n="regOtpDevNote">In
+            development, the OTP will be shown in an alert.</p>
           <span class="field-error" id="otp-error"></span>
         </div>
 
@@ -156,4 +153,5 @@
 
   <script type="module" src="/src/pages/register/register.js"></script>
 </body>
+
 </html>

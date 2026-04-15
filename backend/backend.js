@@ -188,18 +188,18 @@ app.post('/post', async (req, res) => {
   const lat = parseFloat(data.Latitude);
   const lon = parseFloat(data.Longitude);
 
-  const randomres = getRandomLocationInIndia();
+  // const randomres = getRandomLocationInIndia();
 
-  console.log(`\nLatitude: ${randomres.latitude}, Longitude: ${randomres.longitude}`);
-  getStateFromCoords(randomres.latitude, randomres.longitude)
+  console.log(`\nLatitude: ${lat}, Longitude: ${lon}`);
+  getStateFromCoords(lat, lon)
     .then(state => console.log(state));
 
   try {
     // Fetch all required data in parallel
     const [npk, climate, ph] = await Promise.all([
-      getNPK(randomres.latitude, randomres.longitude),
-      getClimateAverages(randomres.latitude, randomres.longitude),
-      getSoilPhWCS(randomres.latitude, randomres.longitude).catch(err => {
+      getNPK(lat, lon),
+      getClimateAverages(lat, lon),
+      getSoilPhWCS(lat, lon).catch(err => {
         console.warn("Soil pH fetch failed, falling back to 7.0:", err.message);
         return 7.0; // fallback pH
       })
@@ -428,13 +428,13 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/analyze-disease', async (req, res) => {
   // Note: Request body size limit in Express defaults to 100kb, 
   // but json() might have been configured. We'll handle errors gracefully.
-  const { imageBase64, lang } = req.body;
+  const { imageBase64, lang, type } = req.body;
   if (!imageBase64) {
     return res.status(400).json({ error: "No imageBase64 data provided." });
   }
 
   try {
-    const analysisData = await analyzePestImage(imageBase64, lang || 'en');
+    const analysisData = await analyzePestImage(imageBase64, lang || 'en', type || 'generic');
     res.json(analysisData);
   } catch (error) {
     console.error("Error in /api/analyze-disease:", error);

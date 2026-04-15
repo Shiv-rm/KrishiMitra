@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KrishiMitra – Login</title>
-  <meta name="description" content="Login to KrishiMitra – your smart farming assistant for crop recommendations and real-time field analysis." />
+  <meta name="description"
+    content="Login to KrishiMitra – your smart farming assistant for crop recommendations and real-time field analysis." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles/global.css" />
+  <link rel="icon" href="data:,">
   <link rel="apple-touch-icon" href="/pwa-192x192.png">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/src/pages/login/login.css" />
 </head>
+
 <body class="login-body">
 
   <div id="login-app">
@@ -20,7 +26,7 @@
     <!-- Language Toggle -->
     <div class="lang-toggle login-lang" role="group" aria-label="Language switcher">
       <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
-      <button class="lang-btn"        id="btn-hi" data-lang="hi">हिं</button>
+      <button class="lang-btn" id="btn-hi" data-lang="hi">हिं</button>
     </div>
 
     <!-- Decorative crop illustration -->
@@ -51,17 +57,8 @@
         <div class="form-group" id="group-phone">
           <label for="phone" data-i18n="loginPhone">Mobile Number</label>
           <div class="input-wrapper">
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              inputmode="numeric"
-              maxlength="10"
-              autocomplete="tel"
-              data-i18n-placeholder="loginPhonePlaceholder"
-              placeholder="Enter your 10-digit mobile number"
-              required
-            />
+            <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" autocomplete="tel"
+              data-i18n-placeholder="loginPhonePlaceholder" placeholder="Enter your 10-digit mobile number" required />
           </div>
           <span class="field-error" id="phone-error"></span>
         </div>
@@ -73,15 +70,8 @@
             <a href="#" class="forgot-link" id="forgot-link" data-i18n="loginForgot">Forgot Password?</a>
           </div>
           <div class="input-wrapper">
-            <input
-              type="password"
-              id="password"
-              name="password"
-              autocomplete="current-password"
-              data-i18n-placeholder="loginPasswordPlaceholder"
-              placeholder="Enter your password"
-              required
-            />
+            <input type="password" id="password" name="password" autocomplete="current-password"
+              data-i18n-placeholder="loginPasswordPlaceholder" placeholder="Enter your password" required />
             <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password visibility">
             </button>
           </div>
@@ -121,4 +111,5 @@
 
   <script type="module" src="/src/pages/login/login.js"></script>
 </body>
+
 </html>
