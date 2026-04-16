@@ -18,7 +18,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 import { pool as db, initializeDB } from './database/pdb.js';
 
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
-import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './groq_ai_service.js';
+import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan } from './groq_ai_service.js';
 
 const app = express()
 const port = 3000
@@ -228,9 +228,16 @@ app.post('/post', async (req, res) => {
         resultData = { recommendation: stdout.trim() };
       }
 
+      // Add dynamic fertilizer recommendation
+      const fertRec = npk.N < 200 ? "Apply Nitrogen-rich fertilizers (e.g., Urea)." 
+                    : npk.P < 10 ? "Apply Phosphorus-rich fertilizers (e.g., DAP)."
+                    : npk.K < 100 ? "Apply Potassium-rich fertilizers (e.g., MOP)."
+                    : "Soil nutrients are sufficiently balanced. Maintain current practices.";
+
       res.json({
         ...result,
-        ...resultData
+        ...resultData,
+        fertilizer_recommendation: fertRec
       });
     } catch (predictError) {
       console.error("Prediction failed:", predictError);
@@ -248,22 +255,89 @@ app.post('/post', async (req, res) => {
 })
 
 
-// Mock Market Trends API
-app.post('/api/market-trends', (req, res) => {
-  // const result = req.query.result; - if result passed as query paramenter
+// Realistic Market Trends Implementation
+const BASE_PRICES = {
+  'rice': 2200, 'wheat': 2125, 'mango': 3500, 'banana': 1800, 'cotton': 6000, 
+  'apple': 7000, 'maize': 2000, 'grapes': 4000, 'papaya': 2500, 'coconut': 3000
+};
 
+app.post('/api/market-trends', (req, res) => {
   const result = req.body;
   console.log("Analysing market trends...");
+  const crop = (result.top_recommendation || result.crop || '').toLowerCase();
+  
+  const basePrice = BASE_PRICES[crop] || 2500;
+  // Fluctuate between -5% and +5% of base price based on a daily seed
+  const today = new Date().toISOString().slice(0, 10);
+  let hash = 0;
+  for (let i = 0; i < today.length; i++) {
+    hash = ((hash << 5) - hash) + today.charCodeAt(i);
+  }
+  const varianceOptions = [-0.05, -0.02, 0, 0.02, 0.05];
+  const variance = varianceOptions[Math.abs(hash) % varianceOptions.length];
+  
+  const currentPricePerQuintal = Math.floor(basePrice * (1 + variance));
+  const trend = variance > 0 ? "Upward" : variance < 0 ? "Downward" : "Stable";
+  const demand = variance > 0 ? "High" : variance < 0 ? "Low" : "Medium";
 
-  // Return some synthetic/mock market data
   res.json({
-    crop: result.top_recommendation,
-    currentPricePerQuintal: Math.floor(Math.random() * 2000) + 1500,
-    demand: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
-    trend: ['Upward', 'Stable', 'Downward'][Math.floor(Math.random() * 3)],
-    source: "KrishiMitra Simulated Market API"
+    crop: result.top_recommendation || result.crop,
+    currentPricePerQuintal,
+    demand,
+    trend,
+    source: "Aggregated Live Mandi Data (Simulated)"
   });
   console.log("market trends sent to frontend...");
+});
+
+// Weather API Endpoint
+app.get('/api/weather', async (req, res) => {
+  try {
+    const { lat, lon, crop, lang } = req.query;
+    if (!lat || !lon) {
+      return res.status(400).json({ error: "Latitude and Longitude required" });
+    }
+
+    // Fetch real-time forecast from Open-Meteo
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`;
+    const response = await fetch(url);
+    const weatherData = await response.json();
+
+    // Use Groq to generate a crop-specific alert based on the weather
+    const systemInstruction = lang === 'hi' 
+      ? 'आप मौसम और कृषि के विशेषज्ञ हैं। वर्तमान मौसम के आधार पर फसल के लिए केवल एक वाक्य का अलर्ट दें (हिंदी में)।' 
+      : 'You are a weather and agriculture expert. Give a single-sentence crop alert based on the current weather (in English).';
+    
+    let cropAlert = "Weather conditions are stable.";
+    if (crop) {
+      const condition = `Temp: ${weatherData.current_weather.temperature}°C, Daily Rain: ${weatherData.daily?.precipitation_sum[0] || 0}mm.`;
+      const aiResponse = await getGroqResponse(`The current weather is: ${condition}. Please give a concise 1-sentence advisory for farming "${crop}".`, null, lang);
+      cropAlert = aiResponse;
+    }
+
+    res.json({
+      current: weatherData.current_weather,
+      daily: weatherData.daily,
+      alert: cropAlert
+    });
+
+  } catch (error) {
+    console.error("Weather API Error:", error);
+    res.status(500).json({ error: "Failed to fetch weather data." });
+  }
+});
+
+// Crop Rotation Planner API
+app.get('/api/crop-rotation', async (req, res) => {
+  try {
+    const { crop, lang, history } = req.query;
+    if (!crop) return res.status(400).json({ error: "Crop is required" });
+    const rotationPlan = await generateCropRotationPlan(crop, lang || 'en', history || null);
+    res.json(rotationPlan);
+  } catch (error) {
+    console.error("Crop Rotation API error:", error);
+    res.status(500).json({ error: "Failed to generate crop rotation plan." });
+  }
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -459,6 +533,35 @@ app.get('/api/me', async (req, res) => {
   } catch (err) {
     console.error('Auth /api/me error:', err);
     res.status(401).json({ error: 'Invalid token.' });
+  }
+});
+
+// Get Crop History
+app.get('/api/crop-history', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const result = await db.query('SELECT crop_name, season_year, planted_at FROM crop_history WHERE user_id = $1 ORDER BY planted_at ASC', [userId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch history error:', err);
+    res.status(500).json({ error: 'Failed to fetch history.' });
+  }
+});
+
+// Add Crop History
+app.post('/api/crop-history', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const { crop_name, season_year } = req.body;
+    if (!crop_name) return res.status(400).json({ error: 'crop_name required' });
+    
+    await db.query('INSERT INTO crop_history (user_id, crop_name, season_year) VALUES ($1, $2, $3)', [userId, crop_name, season_year]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save history error:', err);
+    res.status(500).json({ error: 'Failed to save history.' });
   }
 });
 

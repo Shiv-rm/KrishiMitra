@@ -254,3 +254,61 @@ If no disease is found, state that the plant appears healthy in the analysis, bu
     throw new Error("Failed to analyze image with AI.");
   }
 }
+
+/**
+ * Generates a crop rotation plan based on the current crop.
+ */
+export async function generateCropRotationPlan(currentCrop, lang = 'en', pastCrops = null) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+
+  try {
+    const langInstruction = lang === 'hi'
+      ? 'CRITICAL: ALL text values in the JSON (season, crop_name, reason) MUST be in Hindi language.'
+      : 'All text values in the JSON MUST be in English language.';
+
+    const pastCropContext = pastCrops ? `The farmer has previously grown: ${pastCrops}. Please ensure the rotation makes sense contextually.` : '';
+
+    const prompt = `
+You are an expert agronomist. A farmer has just harvested or is planning to harvest "${currentCrop}".
+${pastCropContext}
+Provide a 3-season crop rotation plan to restore soil fertility, prevent pests, and maximize yield.
+
+${langInstruction}
+
+You MUST respond strictly with valid JSON. Return ONLY the JSON object.
+Format:
+{
+  "rotation_plan": [
+    {
+      "season": "Season 1 (Next)",
+      "crop_name": "Name of crop",
+      "reason": "Why this crop is best for rotation (e.g., fixes nitrogen, breaks pest cycle)"
+    },
+    {
+      "season": "Season 2",
+      "crop_name": "Name of crop",
+      "reason": "Reason for this crop"
+    },
+    {
+      "season": "Season 3",
+      "crop_name": "Name of crop",
+      "reason": "Reason for this crop"
+    }
+  ]
+}`;
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error('Groq Crop Rotation Error:', error);
+    throw new Error('Failed to generate crop rotation plan.');
+  }
+}

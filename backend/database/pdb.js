@@ -63,6 +63,18 @@ const initializeDB = async () => {
             )
         `);
 
+        // Create Crop History Table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS crop_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                crop_name VARCHAR(100) NOT NULL,
+                season_year VARCHAR(50),
+                planted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        `);
+
         client.release();
     } catch (err) {
         console.error('Error initializing database:', err.stack);

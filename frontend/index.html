@@ -53,7 +53,13 @@
                     </div>
                 </div>
 
-                    <!-- 2. Market Insights Card -->
+                    <!-- 2. Weather Advisory Card -->
+                    <div class="card weather-card hidden" id="weather-card" style="background: #f0f8ff; border-left: 4px solid #0288d1;">
+                        <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="weatherTitle">Weather Advisory</h2>
+                        <div id="weather-container"></div>
+                    </div>
+
+                    <!-- 3. Market Insights Card -->
                     <div class="card market-card hidden" id="market-card" style="background: #fafafa; border-left: 4px solid #2e7d32;">
                         <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;" data-i18n="marketTitle">Market Insights</h2>
                         <div id="market-container"></div>
@@ -67,6 +73,8 @@
                 <div class="sub-navbar" id="roadmap-sub-navbar">
                     <button class="sub-tab active" id="sub-tab-timeline" data-subtarget="subtab-timeline" data-i18n="roadmapSubTimeline">Timeline</button>
                     <button class="sub-tab" id="sub-tab-resources" data-subtarget="subtab-resources" data-i18n="roadmapSubResources">Resources</button>
+                    <button class="sub-tab" id="sub-tab-rotation" data-subtarget="subtab-rotation" data-i18n="roadmapSubRotation">Crop Rotation</button>
+                    <button class="sub-tab" id="sub-tab-history" data-subtarget="subtab-history">Crop History</button>
                 </div>
 
                 <div class="dashboard-grid">
@@ -83,6 +91,29 @@
                         <div class="card roadmap-card" id="roadmap-resources-card">
                             <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapResourcesTitle">Required Resources</h2>
                             <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized resource plan.</p>
+                        </div>
+                    </div>
+
+                    <!-- Sub-Tab: Crop Rotation -->
+                    <div id="subtab-rotation" class="sub-tab-content hidden">
+                        <div class="card roadmap-card" id="roadmap-rotation-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;" data-i18n="roadmapRotationTitle">Crop Rotation Planner</h2>
+                            <div id="rotation-container">
+                                <p style="color: var(--text-muted); font-size: 0.95rem;" data-i18n="roadmapEmpty">Please complete a Crop Analysis first to generate your personalized resource plan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sub-Tab: Crop History -->
+                    <div id="subtab-history" class="sub-tab-content hidden">
+                        <div class="card roadmap-card" id="history-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;">My Crop History</h2>
+                            <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                                <input type="text" id="history-crop-input" placeholder="E.g., Wheat" style="padding:8px; border:1px solid #ccc; border-radius:4px; flex:1;" />
+                                <input type="text" id="history-season-input" placeholder="E.g., 2025 Rabi" style="padding:8px; border:1px solid #ccc; border-radius:4px; max-width:120px;" />
+                                <button id="add-history-btn" class="primary-btn" style="padding:8px 15px;">Add</button>
+                            </div>
+                            <ul id="history-list" style="list-style: none; padding: 0; margin: 0;"></ul>
                         </div>
                     </div>
                 </div>

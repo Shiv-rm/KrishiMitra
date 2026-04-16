@@ -27,6 +27,49 @@ const pestBtn = document.getElementById("analyze-pest-btn");
 const pestStatus = document.getElementById("pest-status-message");
 const pestResults = document.getElementById("pest-results-container");
 
+async function loadHistory() {
+    const kmToken = localStorage.getItem('km_token');
+    if (!kmToken) return;
+    try {
+        const res = await fetch('/api/crop-history', { headers: { 'Authorization': `Bearer ${kmToken}` } });
+        if (res.ok) {
+            const history = await res.json();
+            userProfile = userProfile || {};
+            userProfile.history = history;
+            const list = document.getElementById('history-list');
+            if (list) {
+                if (history.length === 0) list.innerHTML = '<li><p style="color:#777; font-size:0.9rem;">No history added yet.</p></li>';
+                else list.innerHTML = history.map(h => `<li style="padding:8px 0; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between;"><strong>${h.crop_name}</strong> <span style="font-size:0.85rem; color:#666;">${h.season_year || ''}</span></li>`).join('');
+            }
+        }
+    } catch(e) { console.error('Failed to load crop history', e); }
+}
+
+const addHistoryBtn = document.getElementById("add-history-btn");
+if (addHistoryBtn) {
+    addHistoryBtn.addEventListener("click", async () => {
+        const crop_name = document.getElementById("history-crop-input").value.trim();
+        const season_year = document.getElementById("history-season-input").value.trim();
+        if (!crop_name) return;
+        const kmToken = localStorage.getItem('km_token');
+        if (!kmToken) return alert("Log in to save history.");
+        addHistoryBtn.disabled = true;
+        try {
+            const res = await fetch("/api/crop-history", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${kmToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ crop_name, season_year })
+            });
+            if (res.ok) {
+                document.getElementById("history-crop-input").value = "";
+                document.getElementById("history-season-input").value = "";
+                await loadHistory();
+            } else alert("Failed to add crop history.");
+        } catch(e) { console.error(e); }
+        addHistoryBtn.disabled = false;
+    });
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let lastResult = null;
 let userProfile = { land_size: 1, land_unit: 'acres' }; // default fallback
@@ -43,6 +86,7 @@ async function loadUserProfile() {
                 land_size: data.land_size || 1,
                 land_unit: data.land_unit || 'acres'
             };
+            await loadHistory();
             console.log('User profile loaded:', userProfile);
         }
     } catch (e) {
@@ -187,14 +231,17 @@ async function sendToBackend(latitude, longitude) {
 
         if (result.top_recommendation) {
             const lang = localStorage.getItem("km_lang") || "en";
-            const [marketRes, roadmapRes, pestRes] = await Promise.allSettled([
+            const historyStr = (userProfile && userProfile.history) ? userProfile.history.map(h => h.crop_name).join(", ") : "";
+            const [marketRes, roadmapRes, pestRes, weatherRes, rotationRes] = await Promise.allSettled([
                 fetch('/api/market-trends', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(result)
                 }).then(r => r.json()),
                 fetchRoadmap(result.top_recommendation, lang),
-                fetchPestPrediction(result.top_recommendation, lang)
+                fetchPestPrediction(result.top_recommendation, lang),
+                fetch(`/api/weather?lat=${latitude}&lon=${longitude}&crop=${result.top_recommendation}&lang=${lang}`).then(r => r.json()),
+                fetch(`/api/crop-rotation?crop=${result.top_recommendation}&lang=${lang}&history=${encodeURIComponent(historyStr)}`).then(r => r.json())
             ]);
 
             if (marketRes.status === 'fulfilled') result.market = marketRes.value;
@@ -206,6 +253,8 @@ async function sendToBackend(latitude, longitude) {
             if (pestRes.status === 'fulfilled' && pestRes.value) {
                 result.pest_threats = pestRes.value.threats || null;
             }
+            if (weatherRes.status === 'fulfilled') result.weather = weatherRes.value;
+            if (rotationRes.status === 'fulfilled' && rotationRes.value) result.rotation = rotationRes.value.rotation_plan || null;
         }
 
         lastResult = result;
@@ -334,14 +383,50 @@ function displayResults(data) {
     if (data.market) {
         marketContainer.innerHTML = `
             <div style="display: flex; gap: 20px; font-size: 0.95rem; color: var(--text-muted);">
-                <div><strong>${t('dashPrice')}</strong> ₹${data.market.currentPricePerQuintal}/q</div>
-                <div><strong>${t('dashDemand')}</strong> <span style="color: ${data.market.demand === 'High' ? '#2e7d32' : 'inherit'}; font-weight:600;">${data.market.demand}</span></div>
-                <div><strong>${t('dashTrend')}</strong> <span style="font-weight:600;">${data.market.trend}</span></div>
+                <div><strong>${t('dashPrice') || 'Price Format'}</strong> ₹${data.market.currentPricePerQuintal}/q</div>
+                <div><strong>${t('dashDemand') || 'Demand'}</strong> <span style="color: ${data.market.demand === 'High' ? '#2e7d32' : 'inherit'}; font-weight:600;">${data.market.demand}</span></div>
+                <div><strong>${t('dashTrend') || 'Market Trend'}</strong> <span style="font-weight:600;">${data.market.trend}</span></div>
             </div>
+            <div style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">${data.market.source}</div>
         `;
         marketCard.classList.remove("hidden");
     } else {
         marketCard.classList.add("hidden");
+    }
+
+    // Weather Card
+    const weatherCard = document.getElementById("weather-card");
+    const weatherContainer = document.getElementById("weather-container");
+    if (data.weather && !data.weather.error) {
+        let dailyForecasts = '';
+        if (data.weather.daily && data.weather.daily.time) {
+            dailyForecasts = data.weather.daily.time.slice(0,3).map((date, idx) => {
+                const maxT = data.weather.daily.temperature_2m_max[idx];
+                const minT = data.weather.daily.temperature_2m_min[idx];
+                const rain = data.weather.daily.precipitation_sum[idx];
+                return `<div style="text-align:center; padding:10px; background:#fff; border-radius:8px; flex: 1;">
+                    <div style="font-weight:600; font-size:0.85rem;">${new Date(date).toLocaleDateString(undefined, {weekday:'short'})}</div>
+                    <div style="font-size:1.1rem; margin:5px 0;">${maxT}°/ ${minT}°</div>
+                    <div style="font-size:0.8rem; color:#1976d2;">🌧️ ${rain}mm</div>
+                </div>`;
+            }).join('');
+        }
+
+        weatherContainer.innerHTML = `
+            <div style="display: flex; gap: 20px; font-size: 0.95rem; color: var(--text-main); margin-bottom: 12px; align-items:center;">
+                <div style="font-size: 2rem;">🌤️</div>
+                <div>
+                    <div><strong>Current:</strong> ${data.weather.current?.temperature}°C</div>
+                    <div style="color: #0288d1; font-weight:600; margin-top:4px;">&#9888; Alert: ${data.weather.alert}</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content:space-between; background:rgba(2,136,209,0.1); padding:10px; border-radius:8px;">
+                ${dailyForecasts}
+            </div>
+        `;
+        weatherCard.classList.remove("hidden");
+    } else if (weatherCard) {
+        weatherCard.classList.add("hidden");
     }
 
     // ── Roadmap: Timeline sub-tab ────────────────────────────────────────────
@@ -421,6 +506,39 @@ function displayResults(data) {
         `;
     }
 
+    // ── Roadmap: Crop Rotation sub-tab ─────────────────────────────────────────
+    const roadmapRotationCard = document.getElementById("roadmap-rotation-card");
+    if (roadmapRotationCard) {
+        if (data.rotation && data.rotation.length > 0) {
+            roadmapRotationCard.innerHTML = `
+                <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight: 600; font-size: 1.2rem;">Crop Rotation Planner</h2>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">Post-harvest rotation for: <strong>${cropName || ''}</strong></p>
+                <div class="roadmap-timeline">
+                    ${data.rotation.map((step, idx) => `
+                        <div class="roadmap-step">
+                            <div class="roadmap-step-dot" style="background:#2e7d32;"></div>
+                            <div class="roadmap-step-content">
+                                <div class="roadmap-step-header">
+                                    <strong style="color:#2e7d32; font-size:1.1rem; text-transform:capitalize;">${step.crop_name}</strong>
+                                    <span class="roadmap-step-time">${step.season}</span>
+                                </div>
+                                <p class="roadmap-step-action" style="margin-top:8px;">${step.reason}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            const hasCrop = !!cropName;
+            roadmapRotationCard.innerHTML = `
+                <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;">Crop Rotation Planner</h2>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    ${hasCrop ? 'Please click "Analyze My Location" again to generate your new crop rotation plan.' : t('roadmapEmpty')}
+                </p>
+            `;
+        }
+    }
+
     // ── Pest Protection: Predicted threats ─────────────────────────────────
     if (data.pest_threats && data.pest_threats.length > 0) {
         const severityColor = { High: '#c62828', Medium: '#e65100', Low: '#2e7d32' };
@@ -447,6 +565,10 @@ function displayResults(data) {
     resultsContainer.innerHTML = `
         ${recommendationHTML}
         ${forecastsHTML}
+        <div style="margin-top: 15px; padding: 12px; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px;">
+            <strong style="color: #2e7d32;">Fertilizer Recommendation:</strong>
+            <p style="margin-top: 5px; color: var(--text-main); font-size: 0.95rem;">${data.fertilizer_recommendation || "Maintain current nutrient balance."}</p>
+        </div>
         <h4 style="color: var(--text-muted); margin-top: 25px; margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">${t('dashFieldParams')}</h4>
         <div class="results-grid">
             <div class="result-item"><span class="result-label">${t("nitrogen")}</span><span class="result-value">${data.N}</span></div>
