@@ -308,7 +308,101 @@ Format:
 
     return JSON.parse(response.choices[0].message.content);
   } catch (error) {
-    console.error('Groq Crop Rotation Error:', error);
-    throw new Error('Failed to generate crop rotation plan.');
+    console.error("Groq Crop Rotation Generation Error:", error.message || error);
+    // Return empty array instead of failing entirely
+    return { rotation_plan: [] };
+  }
+}
+
+/**
+ * Analyzes loan eligibility and suggests government schemes based on farmer's profile
+ */
+export async function analyzeLoanEligibility(profile, lang = 'en') {
+  if (!process.env.GROQ_API_KEY) {
+    return { error: "GROQ_API_KEY is not configured", assessment: "", schemes: [] };
+  }
+
+  const systemPrompt = `You are a financial advisor specializing in agricultural loans and subsidies in India.
+The user's profile is:
+- Land Size: ${profile.land_size} ${profile.land_unit}
+- State: ${profile.state || 'India'}
+- Current Crop: ${profile.crop_type || 'Unknown'}
+- Requested Loan Type: ${profile.loan_type || 'General Agricultural Loan'}
+- Amount: ₹${profile.amount || 'Unknown'}
+
+Analyze their eligibility and provide:
+1. "assessment": A supportive assessment of their loan eligibility (HTML format, short paragraphs).
+2. "schemes": An array of objects for 2-3 specific Indian government schemes they qualify for, each with "name" and "description".
+
+Ensure your response is valid JSON. Use language: ${lang === 'hi' ? 'Hindi' : 'English'}, but always keep JSON keys in English.
+
+Format strictly as:
+{
+  "assessment": "HTML string here",
+  "schemes": [
+    { "name": "Scheme 1", "description": "Desc 1" }
+  ]
+}`;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: systemPrompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
+
+    const reply = completion.choices[0]?.message?.content;
+    return JSON.parse(reply);
+  } catch (error) {
+    console.error("Groq Loan Analysis Error:", error.message || error);
+    return { error: "Failed to fetch loan analysis.", assessment: "", schemes: [] };
+  }
+}
+
+/**
+ * Simulates Soil Classification using Groq Vision model.
+ */
+export async function analyzeSoil(imageBase64, lang = 'en') {
+  if (!process.env.GROQ_API_KEY) {
+    return { error: "GROQ_API_KEY is not configured", soil_type: "Unknown", analysis: "N/A" };
+  }
+
+  const systemPrompt = `You are an expert an agricultural soil science. 
+Examine the provided image of soil and classify the soil type (e.g., Alluvial, Black, Red, Laterite, Desert, etc.).
+Provide:
+1. "soil_type": The best guess of the soil type.
+2. "analysis": A brief HTML-formatted analysis of this soil's typical characteristics and what crops are best suited for it.
+
+Use language: ${lang === 'hi' ? 'Hindi' : 'English'}, but always keep JSON keys in English.
+
+Format strictly as JSON:
+{
+  "soil_type": "Soil Type",
+  "analysis": "HTML string..."
+}`;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: "text", text: systemPrompt },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+          ]
+        }
+      ],
+      model: 'llama-3.2-11b-vision-preview',
+      temperature: 0.3,
+      max_tokens: 1024,
+      response_format: { type: "json_object" }
+    });
+
+    const reply = completion.choices[0]?.message?.content;
+    return JSON.parse(reply);
+  } catch (error) {
+    console.error("Groq Soil Analysis Error:", error.message || error);
+    return { error: "Failed to analyze soil image.", soil_type: "Unknown", analysis: "N/A" };
   }
 }

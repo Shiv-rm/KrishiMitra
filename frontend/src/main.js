@@ -219,12 +219,32 @@ async function sendToBackend(latitude, longitude) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
         });
-        const result = await response.json();
+        const jobInit = await response.json();
 
-        if (result.error) {
-            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${result.error}</span>`);
+        if (jobInit.error) {
+            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${jobInit.error}</span>`);
             locateBtn.disabled = false;
             return;
+        }
+
+        const jobId = jobInit.jobId;
+        updateStatus("Job queued. Analyzing soil and climate...");
+
+        let result;
+        while (true) {
+            await new Promise(r => setTimeout(r, 2000));
+            const jobRes = await fetch(`/api/job/${jobId}`);
+            if (!jobRes.ok) continue;
+            
+            const jobData = await jobRes.json();
+            if (jobData.status === 'completed') {
+                result = jobData.result;
+                break;
+            } else if (jobData.status === 'failed') {
+                updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${jobData.error || 'Failed'}</span>`);
+                locateBtn.disabled = false;
+                return;
+            }
         }
 
         updateStatus("Gathering market, roadmap and pest data...");
@@ -674,6 +694,349 @@ if (pestBtn) {
             console.error("Pest analysis error:", err);
             pestStatus.innerHTML = `<span style="color:#c62828;">${t('dashErrConnection')}</span>`;
             pestBtn.disabled = false;
+        }
+    });
+}
+
+// ── Farm Ledger (ExpenseFlow) ────────────────────────────────────────────────
+const ledgerForm = document.getElementById("ledger-form");
+const ledgerList = document.getElementById("ledger-list");
+const ledgerIncomeEl = document.getElementById("ledger-income");
+const ledgerExpenseEl = document.getElementById("ledger-expense");
+const ledgerBalanceEl = document.getElementById("ledger-balance");
+
+async function loadLedger() {
+    if (!kmToken) return;
+    try {
+        const res = await fetch('/api/ledger', { headers: { 'Authorization': `Bearer ${kmToken}` } });
+        if (!res.ok) return;
+        const entries = await res.json();
+        renderLedger(entries);
+    } catch (e) {
+        console.error("Failed to load ledger:", e);
+    }
+}
+
+function renderLedger(entries) {
+    if (!ledgerList) return;
+    ledgerList.innerHTML = '';
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    if (entries.length === 0) {
+        ledgerList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 10px;">No transactions found.</p>';
+    }
+
+    entries.forEach(entry => {
+        const amount = parseFloat(entry.amount);
+        if (entry.type === 'income') totalIncome += amount;
+        else totalExpense += amount;
+
+        const dateStr = new Date(entry.date).toLocaleDateString();
+        const isIncome = entry.type === 'income';
+        const color = isIncome ? '#2e7d32' : '#c62828';
+        const sign = isIncome ? '+' : '-';
+
+        const item = document.createElement('div');
+        item.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color);';
+        item.innerHTML = `
+            <div>
+                <div style="font-weight: 600; color: var(--text-main);">${entry.category}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${dateStr} ${entry.description ? '- ' + entry.description : ''}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-weight: 700; color: ${color};">${sign}₹${amount.toFixed(2)}</div>
+                <button class="delete-ledger-btn" data-id="${entry.id}" style="background: none; border: none; color: #ef5350; cursor: pointer; font-size: 1.1rem; padding: 0 5px;" title="Delete">×</button>
+            </div>
+        `;
+        ledgerList.appendChild(item);
+    });
+
+    if (ledgerIncomeEl) ledgerIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
+    if (ledgerExpenseEl) ledgerExpenseEl.textContent = `₹${totalExpense.toFixed(2)}`;
+    if (ledgerBalanceEl) {
+        const net = totalIncome - totalExpense;
+        ledgerBalanceEl.textContent = `₹${net.toFixed(2)}`;
+        ledgerBalanceEl.style.color = net >= 0 ? '#1b5e20' : '#b71c1c';
+    }
+
+    document.querySelectorAll('.delete-ledger-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            await deleteLedgerEntry(id);
+        });
+    });
+}
+
+if (ledgerForm) {
+    ledgerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!kmToken) return alert("Please login first.");
+        
+        const type = document.getElementById("ledger-type").value;
+        const category = document.getElementById("ledger-category").value;
+        const amount = document.getElementById("ledger-amount").value;
+        const desc = document.getElementById("ledger-desc").value;
+
+        try {
+            const res = await fetch('/api/ledger', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${kmToken}`
+                },
+                body: JSON.stringify({ type, category, amount, description: desc })
+            });
+            if (res.ok) {
+                ledgerForm.reset();
+                loadLedger();
+            }
+        } catch (err) {
+            console.error("Failed to add ledger entry", err);
+        }
+    });
+}
+
+async function deleteLedgerEntry(id) {
+    if (!kmToken) return;
+    if (!confirm("Delete this transaction?")) return;
+    try {
+        const res = await fetch(`/api/ledger/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${kmToken}` }
+        });
+        if (res.ok) loadLedger();
+    } catch (e) {
+        console.error("Delete failed", e);
+    }
+}
+
+// Load ledger data on tab switch
+const ledgerTabBtn = document.querySelector('[data-target="tab-ledger"]');
+if (ledgerTabBtn) {
+    ledgerTabBtn.addEventListener('click', () => {
+        if (kmToken) loadLedger();
+    });
+}
+
+// ── Community Forum (Socket.io) ──────────────────────────────────────────────
+const forumForm = document.getElementById("forum-form");
+const forumMsgInput = document.getElementById("forum-msg-input");
+const forumChatBox = document.getElementById("forum-chat-box");
+let socket = null;
+
+function initForum() {
+    if (socket) return; // Already initialized
+
+    // In dev mode, we point to localhost:3000, in prod it will be same origin
+    socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin, {
+        auth: { token: kmToken }
+    });
+
+    socket.on('connect', () => {
+        socket.emit('joinForum', 'general');
+    });
+
+    socket.on('forumMessage', (data) => {
+        const msgDiv = document.createElement('div');
+        msgDiv.style = 'background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
+        
+        const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        msgDiv.innerHTML = `
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">
+                <strong style="color: var(--text-main);">${data.author}</strong> • ${time}
+            </div>
+            <div style="font-size: 0.95rem; line-height: 1.4;">${data.msg}</div>
+        `;
+        
+        forumChatBox.appendChild(msgDiv);
+        forumChatBox.scrollTop = forumChatBox.scrollHeight;
+    });
+}
+
+if (forumForm) {
+    forumForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const msg = forumMsgInput.value.trim();
+        if (!msg) return;
+
+        if (!socket) initForum();
+
+        // Decode farmer's name from token if available, else Anonymous
+        let author = "Anonymous Farmer";
+        if (kmToken) {
+            try {
+                const payload = JSON.parse(atob(kmToken.split('.')[1]));
+                author = payload.full_name || author;
+            } catch (err) {}
+        }
+
+        socket.emit('forumMessage', {
+            room: 'general',
+            msg: msg,
+            author: author
+        });
+
+        forumMsgInput.value = '';
+    });
+}
+
+// Init forum when the tab is clicked to save resources
+const forumTabBtn = document.querySelector('[data-target="tab-forum"]');
+if (forumTabBtn) {
+    forumTabBtn.addEventListener('click', () => {
+        initForum();
+    });
+}
+
+// ── Loan & Scheme Processing AI ──────────────────────────────────────────────
+const loanForm = document.getElementById("loan-form");
+const loanTypeInput = document.getElementById("loan-type-input");
+const loanAmountInput = document.getElementById("loan-amount-input");
+const loanResults = document.getElementById("loan-results");
+const loanSubmitBtn = document.getElementById("loan-submit-btn");
+
+if (loanForm) {
+    loanForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!kmToken) {
+            alert("Please login first to check your eligibility!");
+            return;
+        }
+
+        const loanType = loanTypeInput.value.trim();
+        const amount = loanAmountInput.value.trim();
+        
+        loanSubmitBtn.disabled = true;
+        loanSubmitBtn.textContent = "Analyzing...";
+        loanResults.classList.remove('hidden');
+        loanResults.innerHTML = '<p style="color: var(--text-muted);">Fetching your profile and analyzing schemes...</p>';
+
+        try {
+            const res = await fetch('/api/loan-analysis', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${kmToken}`
+                },
+                body: JSON.stringify({ 
+                    loan_type: loanType, 
+                    amount: amount,
+                    lang: getLang() 
+                })
+            });
+
+            const data = await res.json();
+            
+            if (!res.ok) {
+                loanResults.innerHTML = `<p style="color: red;">${data.error || 'Failed to perform loan analysis.'}</p>`;
+            } else {
+                let schemesHtml = '<ul style="margin-top: 10px; padding-left: 20px;">';
+                if (data.schemes && data.schemes.length > 0) {
+                    data.schemes.forEach(scheme => {
+                        schemesHtml += `<li><strong>${scheme.name}</strong>: ${scheme.description}</li>`;
+                    });
+                } else {
+                    schemesHtml += '<li>No specific schemes found.</li>';
+                }
+                schemesHtml += '</ul>';
+
+                loanResults.innerHTML = `
+                    <div style="font-size: 0.95rem; color: #33691e; margin-bottom: 15px;">
+                        ${data.assessment}
+                    </div>
+                    <div style="border-top: 1px solid #cddc39; padding-top: 15px;">
+                        <h4 style="color: #558b2f; margin-bottom: 5px;">Recommended Government Schemes</h4>
+                        ${schemesHtml}
+                    </div>
+                `;
+            }
+        } catch (err) {
+            console.error(err);
+            loanResults.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
+        } finally {
+            loanSubmitBtn.disabled = false;
+            loanSubmitBtn.textContent = "Check Eligibility";
+        }
+    });
+}
+
+// ── Soil Image Classification AI ─────────────────────────────────────────────
+const soilInput = document.getElementById("soil-input");
+const soilDropzone = document.getElementById("soil-dropzone");
+const soilAnalyzeBtn = document.getElementById("soil-analyze-btn");
+const soilStatus = document.getElementById("soil-status");
+const soilResults = document.getElementById("soil-results");
+
+if (soilInput && soilDropzone) {
+    soilInput.addEventListener('change', () => {
+        const file = soilInput.files[0];
+        if (file) {
+            soilDropzone.querySelector('p').textContent = `📎 ${file.name}`;
+            soilAnalyzeBtn.disabled = false;
+        }
+    });
+
+    soilDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        soilDropzone.style.borderColor = "var(--primary-color)";
+    });
+
+    soilDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        soilDropzone.style.borderColor = "var(--border-color)";
+    });
+
+    soilDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        soilDropzone.style.borderColor = "var(--border-color)";
+        if (e.dataTransfer.files.length) {
+            soilInput.files = e.dataTransfer.files;
+            soilDropzone.querySelector('p').textContent = `📎 ${e.dataTransfer.files[0].name}`;
+            soilAnalyzeBtn.disabled = false;
+        }
+    });
+}
+
+if (soilAnalyzeBtn) {
+    soilAnalyzeBtn.addEventListener('click', async () => {
+        const file = soilInput.files[0];
+        if (!file) return;
+
+        soilStatus.innerHTML = "Analyzing soil image...";
+        soilAnalyzeBtn.disabled = true;
+
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64String = reader.result.split(',')[1];
+                const res = await fetch('/api/analyze-soil', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64String, lang: getLang() })
+                });
+
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    soilStatus.innerHTML = `<span style="color:red;">${data.error || 'Failed to analyze.'}</span>`;
+                } else {
+                    soilStatus.innerHTML = "";
+                    soilResults.classList.remove('hidden');
+                    soilResults.innerHTML = `
+                        <h3 style="color: #4e342e; margin-bottom: 10px;">Type: ${data.soil_type || 'Unknown'}</h3>
+                        <div style="font-size: 0.95rem; color: #5d4037; line-height: 1.5;">${data.analysis}</div>
+                    `;
+                }
+                soilAnalyzeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error(err);
+            soilStatus.innerHTML = `<span style="color:red;">Network Error</span>`;
+            soilAnalyzeBtn.disabled = false;
         }
     });
 }

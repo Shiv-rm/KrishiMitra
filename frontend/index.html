@@ -21,6 +21,8 @@
             <button class="nav-tab active" data-target="tab-predict" data-i18n="tabAnalysis">Crop Analysis</button>
             <button class="nav-tab" data-target="tab-roadmap" data-i18n="tabRoadmaps">Roadmaps</button>
             <button class="nav-tab" data-target="tab-pest" data-i18n="tabPest">Pest Protection</button>
+            <button class="nav-tab" data-target="tab-ledger">Farm Ledger</button>
+            <button class="nav-tab" data-target="tab-forum">Community</button>
         </div>
         <div class="nav-right">
             <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language switcher">
@@ -75,6 +77,7 @@
                     <button class="sub-tab" id="sub-tab-resources" data-subtarget="subtab-resources" data-i18n="roadmapSubResources">Resources</button>
                     <button class="sub-tab" id="sub-tab-rotation" data-subtarget="subtab-rotation" data-i18n="roadmapSubRotation">Crop Rotation</button>
                     <button class="sub-tab" id="sub-tab-history" data-subtarget="subtab-history">Crop History</button>
+                    <button class="sub-tab" id="sub-tab-loan" data-subtarget="subtab-loan">Loans & Schemes</button>
                 </div>
 
                 <div class="dashboard-grid">
@@ -116,6 +119,27 @@
                             <ul id="history-list" style="list-style: none; padding: 0; margin: 0;"></ul>
                         </div>
                     </div>
+
+                    <!-- Sub-Tab: Loan & Schemes -->
+                    <div id="subtab-loan" class="sub-tab-content hidden">
+                        <div class="card roadmap-card" id="loan-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 15px; font-weight: 600; font-size: 1.2rem;">AI Loan & Scheme Profiler</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;">Check your eligibility for agricultural loans and government subsidies based on your profile.</p>
+                            
+                            <form id="loan-form" style="display:flex; flex-direction: column; gap:10px; margin-bottom: 15px;">
+                                <div style="display:flex; gap:10px;">
+                                    <input type="text" id="loan-type-input" placeholder="Loan Type (E.g., Farm Equipment)" style="padding:10px; border:1px solid var(--border-color); border-radius:6px; flex:1;" required />
+                                    <input type="number" id="loan-amount-input" placeholder="Requested Amount (₹)" style="padding:10px; border:1px solid var(--border-color); border-radius:6px; max-width:200px;" required />
+                                </div>
+                                <button type="submit" class="primary-btn" style="align-self: flex-start;" id="loan-submit-btn">Check Eligibility</button>
+                            </form>
+
+                            <div id="loan-results" class="hidden" style="margin-top: 20px; background: #f9fbe7; padding: 15px; border-radius: 8px; border: 1px solid #cddc39;">
+                                <!-- AI output gets injected here -->
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
@@ -125,6 +149,7 @@
                 <div class="sub-navbar" id="pest-sub-navbar">
                     <button class="sub-tab active" data-subtarget="subtab-pest-threats" data-i18n="pestExpectedTitle">Expected Threats</button>
                     <button class="sub-tab" data-subtarget="subtab-pest-detect" data-i18n="tabPestDetect">Pest Detection</button>
+                    <button class="sub-tab" data-subtarget="subtab-soil-detect">Soil Classification</button>
                 </div>
 
                 <div class="dashboard-grid" style="display: flex; flex-direction: column; gap: 20px;">
@@ -160,8 +185,114 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Sub-Tab: Soil Classification -->
+                    <div id="subtab-soil-detect" class="sub-tab-content hidden">
+                        <div class="card pest-card" id="soil-card">
+                            <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight: 600; font-size: 1.2rem;">Soil Image Classification</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px;">Upload a photo of your farm's soil for an AI-generated analysis of its type and suitability.</p>
+                            
+                            <div class="upload-container">
+                                <label for="soil-input" class="upload-area" id="soil-dropzone">
+                                    <span class="upload-icon">📷</span>
+                                    <p>Tap to take photo or upload image</p>
+                                </label>
+                                <input type="file" id="soil-input" accept="image/*" class="hidden">
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button class="primary-btn pulse-glow" id="soil-analyze-btn" style="flex: 1;">Classify Soil</button>
+                            </div>
+                            
+                            <div id="soil-status" style="margin-top: 10px; font-weight: 500; font-size: 0.9rem; text-align: center;"></div>
+                            
+                            <div id="soil-results" class="hidden" style="margin-top: 20px; background: #fafafa; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                                <!-- AI output gets injected here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
+            <section id="tab-ledger" class="tab-content">
+                <div class="dashboard-grid">
+                    <!-- Ledger Summary & Add Entry -->
+                    <div class="card main-card">
+                        <h2>Farm Ledger</h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Track your agricultural expenses and income.</p>
+                        
+                        <!-- Summary metrics -->
+                        <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+                            <div style="flex: 1; background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h3 style="color: #2e7d32; font-size: 0.9rem; margin-bottom: 5px;">Total Income</h3>
+                                <div id="ledger-income" style="font-size: 1.5rem; font-weight: 700; color: #1b5e20;">₹0</div>
+                            </div>
+                            <div style="flex: 1; background: #ffebee; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h3 style="color: #c62828; font-size: 0.9rem; margin-bottom: 5px;">Total Expenses</h3>
+                                <div id="ledger-expense" style="font-size: 1.5rem; font-weight: 700; color: #b71c1c;">₹0</div>
+                            </div>
+                            <div style="flex: 1; background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h3 style="color: #1565c0; font-size: 0.9rem; margin-bottom: 5px;">Net Balance</h3>
+                                <div id="ledger-balance" style="font-size: 1.5rem; font-weight: 700; color: #0d47a1;">₹0</div>
+                            </div>
+                        </div>
+
+                        <!-- Add Entry Form -->
+                        <form id="ledger-form" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: flex-end;">
+                            <div style="flex: 1; min-width: 120px;">
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted);">Type</label>
+                                <select id="ledger-type" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit;">
+                                    <option value="expense">Expense</option>
+                                    <option value="income">Income</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 120px;">
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted);">Category</label>
+                                <input type="text" id="ledger-category" placeholder="E.g., Seeds, Labor, Crop Sale" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit;">
+                            </div>
+                            <div style="flex: 1; min-width: 100px;">
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted);">Amount (₹)</label>
+                                <input type="number" id="ledger-amount" min="1" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit;">
+                            </div>
+                            <div style="flex: 2; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted);">Description</label>
+                                <input type="text" id="ledger-desc" placeholder="Optional details..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit;">
+                            </div>
+                            <div>
+                                <button type="submit" class="primary-btn" style="padding: 10px 20px; margin-bottom: 2px;">Add Entry</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Transactions List -->
+                    <div class="card weather-card">
+                        <h2 style="font-size: 1.1rem; margin-bottom: 15px;">Recent Transactions</h2>
+                        <div id="ledger-list" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Items injected here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 5: Community Forum -->
+            <section id="tab-forum" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="card main-card" style="display: flex; flex-direction: column; min-height: 500px;">
+                        <h2>Community Forum</h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Real-time discussion board for farmers to share knowledge and ask questions.</p>
+                        
+                        <div id="forum-chat-box" style="flex: 1; background: #fafafa; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; overflow-y: auto; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 400px;">
+                            <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">Welcome to the General Discussion room!</div>
+                            <!-- Messages injected here -->
+                        </div>
+
+                        <form id="forum-form" style="display: flex; gap: 10px;">
+                            <input type="text" id="forum-msg-input" placeholder="Type your message..." required style="flex: 1; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit;">
+                            <button type="submit" class="primary-btn" style="padding: 10px 20px;">Send</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
         <footer>

@@ -75,6 +75,20 @@ const initializeDB = async () => {
             )
         `);
 
+        // Create Ledger Entries Table (ExpenseFlow)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS ledger_entries (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+                amount DECIMAL(12,2) NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                description TEXT,
+                date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        `);
+
         client.release();
     } catch (err) {
         console.error('Error initializing database:', err.stack);

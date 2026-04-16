@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
@@ -18,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 import { pool as db, initializeDB } from './database/pdb.js';
 
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
-import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan } from './groq_ai_service.js';
+import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan, analyzeLoanEligibility, analyzeSoil } from './groq_ai_service.js';
 
 const app = express()
 const port = 3000
@@ -172,87 +174,92 @@ async function getClimateAverages(lat, lon) {
   };
 }
 
+const activeJobs = new Map();
 
+// ── Job Queue Pattern for /post ───────────────────────────────────────────────
 app.post('/post', async (req, res) => {
-  const data = req.body;
-  const lat = parseFloat(data.Latitude);
-  const lon = parseFloat(data.Longitude);
+  const { Latitude, Longitude } = req.body;
 
-  console.log(`Latitude: ${lat}, Longitude: ${lon}`);
+  if (!Latitude || !Longitude) {
+    return res.status(400).json({ error: "Missing Latitude or Longitude" });
+  }
 
-  try {
-    // Fetch all required data in parallel
-    const [npk, climate, ph] = await Promise.all([
-      getNPK(lat, lon),
-      getClimateAverages(lat, lon),
-      getSoilPhWCS(lat, lon).catch(err => {
-        console.warn("Soil pH fetch failed, falling back to 7.0:", err.message);
-        return 7.0; // fallback pH
-      })
-    ]);
+  // Generate a random jobId (we can use simple crypto or Date.now)
+  const jobId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  activeJobs.set(jobId, { status: 'processing' });
 
-    const result = {
-      N: npk.N,
-      P: npk.P,
-      K: npk.K,
-      temperature: climate.temperature,
-      humidity: climate.humidity,
-      rainfall: climate.rainfall,
-      ph: ph,
-      location_source: npk.source
-    };
+  // Return jobId immediately
+  res.json({ jobId });
 
-    console.log("Aggregated Data:", result);
-
-    // Call Python script for crop prediction
-    // Feature order matches training: N, P, K, temperature, humidity, ph, rainfall
-    const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
-    const scriptPath = path.join(__dirname, 'predict.py');
-    const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
-
+  // Process async
+  (async () => {
     try {
-      // takes stdout from print of predict.py as output
+      const lat = parseFloat(Latitude);
+      const lon = parseFloat(Longitude);
+
+      const [npk, climate, ph] = await Promise.all([
+        getNPK(lat, lon).catch(err => {
+          console.warn("NPK fetch failed, falling back to mock:", err.message);
+          return { N: 280, P: 15, K: 150, source: "national_average" };
+        }),
+        getClimateAverages(lat, lon).catch(err => {
+          console.warn("Climate fetch failed, falling back to mock:", err.message);
+          return { temperature: 25, humidity: 60, rainfall: 100 };
+        }),
+        getSoilPhWCS(lat, lon).catch(err => {
+          console.warn("Soil pH fetch failed, falling back to 7.0:", err.message);
+          return 7.0; // fallback pH
+        })
+      ]);
+
+      const result = {
+        N: npk.N, P: npk.P, K: npk.K,
+        temperature: climate.temperature, humidity: climate.humidity, rainfall: climate.rainfall,
+        ph: ph, location_source: npk.source
+      };
+
+      console.log(`Job ${jobId} Aggregated Data:`, result);
+      const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
+      const scriptPath = path.join(__dirname, 'predict.py');
+      const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
+
       const { stdout, stderr } = await execPromise(`"${pythonPath}" "${scriptPath}" ${args}`);
 
-      if (stderr) {
-        console.error("Python Error:", stderr);
-      }
+      if (stderr) console.error("Python Error:", stderr);
 
-      // Parse JSON from Python
       let resultData;
       try {
         resultData = JSON.parse(stdout.trim());
-        console.log("Model Recommendation (JSON):", resultData);
       } catch (e) {
-        console.error("Failed to parse Python output as JSON:", stdout);
         resultData = { recommendation: stdout.trim() };
       }
 
-      // Add dynamic fertilizer recommendation
-      const fertRec = npk.N < 200 ? "Apply Nitrogen-rich fertilizers (e.g., Urea)." 
-                    : npk.P < 10 ? "Apply Phosphorus-rich fertilizers (e.g., DAP)."
-                    : npk.K < 100 ? "Apply Potassium-rich fertilizers (e.g., MOP)."
-                    : "Soil nutrients are sufficiently balanced. Maintain current practices.";
+      const fertRec = npk.N < 200 ? "Apply Nitrogen-rich fertilizers (e.g., Urea)." :
+                      npk.P < 10 ? "Apply Phosphorus-rich fertilizers (e.g., DAP)." :
+                      npk.K < 100 ? "Apply Potassium-rich fertilizers (e.g., MOP)." :
+                      "Soil nutrients are sufficiently balanced. Maintain current practices.";
 
-      res.json({
-        ...result,
-        ...resultData,
-        fertilizer_recommendation: fertRec
-      });
-    } catch (predictError) {
-      console.error("Prediction failed:", predictError);
-      res.json({
-        ...result,
-        recommendation: "Error in prediction model",
-        error: predictError.message
-      });
+      const finalOutput = { ...result, ...resultData, fertilizer_recommendation: fertRec };
+      activeJobs.set(jobId, { status: 'completed', result: finalOutput });
+
+    } catch (error) {
+      console.error(`Job ${jobId} Failed:`, error);
+      activeJobs.set(jobId, { status: 'failed', error: error.message || 'Unknown error' });
     }
+  })();
+});
 
-  } catch (error) {
-    console.error("Error in /post processing:", error);
-    res.status(500).json({ error: "Failed to gather all parameters." });
+app.get('/api/job/:jobId', (req, res) => {
+  const job = activeJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  
+  res.json(job);
+  // Optionally clean up the job if it's completed or failed to save memory
+  if (job.status === 'completed' || job.status === 'failed') {
+    // Keep it in memory so UI can poll multiple times safely, or setTimeout to delete
+    setTimeout(() => activeJobs.delete(req.params.jobId), 60000);
   }
-})
+});
 
 
 // Realistic Market Trends Implementation
@@ -494,11 +501,27 @@ app.post('/api/analyze-disease', async (req, res) => {
   }
 
   try {
-    const analysisData = await analyzePestImage(imageBase64, lang || 'en');
-    res.json(analysisData);
+    const result = await analyzePestImage(imageBase64, lang);
+    res.json(result);
   } catch (error) {
-    console.error("Error in /api/analyze-disease:", error);
-    res.status(500).json({ error: "Failed to analyze the image." });
+    console.error('Error in /api/analyze-disease:', error);
+    res.status(500).json({ error: 'Failed to analyze image.' });
+  }
+});
+
+// ── Soil Image Classification Endpoint ───────────────────────────────────────
+app.post('/api/analyze-soil', async (req, res) => {
+  try {
+    const { imageBase64, lang = 'en' } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'No image provided' });
+
+    // Use Groq Vision for Soil analysis
+    // Requires analyzeSoil function to be imported from groq_ai_service
+    const result = await analyzeSoil(imageBase64, lang);
+    res.json(result);
+  } catch (error) {
+    console.error('Error in /api/analyze-soil:', error);
+    res.status(500).json({ error: 'Failed to analyze soil image.' });
   }
 });
 
@@ -565,6 +588,88 @@ app.post('/api/crop-history', async (req, res) => {
   }
 });
 
+// ── Ledger / ExpenseFlow API ──────────────────────────────────────────────────
+
+// Get Ledger Entries
+app.get('/api/ledger', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const result = await db.query('SELECT * FROM ledger_entries WHERE user_id = $1 ORDER BY date DESC', [userId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch ledger error:', err);
+    res.status(500).json({ error: 'Failed to fetch ledger.' });
+  }
+});
+
+// Add Ledger Entry
+app.post('/api/ledger', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    const { type, amount, category, description } = req.body;
+    if (!type || !amount || !category) {
+      return res.status(400).json({ error: 'Type, amount, and category are required.' });
+    }
+    
+    const result = await db.query(
+      'INSERT INTO ledger_entries (user_id, type, amount, category, description) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, type, amount, category, description]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Save ledger error:', err);
+    res.status(500).json({ error: 'Failed to save ledger entry.' });
+  }
+});
+
+// Delete Ledger Entry
+app.delete('/api/ledger/:id', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    
+    // Ensure the entry belongs to the user
+    await db.query('DELETE FROM ledger_entries WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete ledger error:', err);
+    res.status(500).json({ error: 'Failed to delete ledger entry.' });
+  }
+});
+
+// ── Loan & Scheme Processing AI ───────────────────────────────────────────────
+
+app.post('/api/loan-analysis', async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+    
+    // Fetch basic user details from the DB
+    const userResult = await db.query('SELECT full_name, state, crop_type, land_size, land_unit FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    
+    const user = userResult.rows[0];
+    const { loan_type, amount, lang } = req.body;
+    
+    const profile = {
+      state: user.state,
+      crop_type: user.crop_type,
+      land_size: user.land_size,
+      land_unit: user.land_unit,
+      loan_type,
+      amount
+    };
+
+    const analysis = await analyzeLoanEligibility(profile, lang || 'en');
+    res.json(analysis);
+  } catch (err) {
+    console.error('Loan analysis error:', err);
+    res.status(500).json({ error: 'Failed to perform loan analysis.' });
+  }
+});
+
 // ── Helper: extract user id from Bearer token ─────────────────────────────────
 function getUserIdFromToken(req) {
   const authHeader = req.headers.authorization;
@@ -624,7 +729,40 @@ async function startServer() {
     // nutrientData is already loaded at the top level, but let's make sure things are sequential
 
     // 3. Start Listening
-    const server = app.listen(port, () => {
+    const httpServer = createServer(app);
+    const io = new Server(httpServer, {
+      cors: { origin: "*" }
+    });
+
+    // Simple Socket.io Chat logic for Community Forum
+    io.on('connection', (socket) => {
+      // User can pass token in auth object
+      const token = socket.handshake.auth.token;
+      let userId = null;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET);
+          userId = decoded.id;
+        } catch (e) {
+          console.error("Socket auth failed");
+        }
+      }
+
+      socket.on('joinForum', (room) => {
+        socket.join(room || 'general');
+      });
+
+      socket.on('forumMessage', async (data) => {
+        // data: { room: 'general', msg: 'hello', author: 'FarmMaster' }
+        io.to(data.room || 'general').emit('forumMessage', {
+          msg: data.msg,
+          author: data.author || 'Anonymous',
+          timestamp: new Date().toISOString()
+        });
+      });
+    });
+
+    const server = httpServer.listen(port, () => {
       console.log(`KrishiMitra server is live at http://localhost:${port}`);
     });
 

@@ -16,6 +16,7 @@
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "request-response": "^0.1.2",
+    "socket.io": "^4.8.3",
     "sqlite3": "^6.0.1"
   }
 }
