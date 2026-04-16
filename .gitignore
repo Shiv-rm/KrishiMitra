@@ -78,3 +78,6 @@ logs/
 *.log
 
 multilingual
+backend/disease_prediction/sample_cropdisease_dataset
+backend/disease_prediction/mobilenet_crop_disease_final.keras
+backend/disease_prediction/crop_disease_prediction.ipynb

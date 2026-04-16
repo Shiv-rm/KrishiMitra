@@ -191,7 +191,7 @@ Format:
 /**
  * Analyzes an image of a plant/leaf for diseases/pests using Groq Vision.
  */
-export async function analyzePestImage(base64Image, lang = 'en') {
+export async function analyzePestImage(base64Image, lang = 'en', type = 'generic') {
   if (!process.env.GROQ_API_KEY) {
     throw new Error("GROQ_API_KEY is not configured.");
   }
@@ -201,9 +201,15 @@ export async function analyzePestImage(base64Image, lang = 'en') {
       ? 'CRITICAL: ALL text values in the JSON (disease, analysis, treatments array, prevention array) MUST be in Hindi language.'
       : 'All text values in the JSON MUST be in English language.';
 
+    const typeContext = type === 'pest' 
+      ? 'Focus specifically on identifying pests, insects, or physical damage caused by bugs.' 
+      : type === 'disease' 
+      ? 'Focus specifically on identifying plant diseases, fungal infections, viruses, or bacterial spots.' 
+      : 'Identify any diseases, pests, or nutrient deficiencies visible.';
+
     const prompt = `
-You are an expert plant pathologist and agrarian scientist. Analyze this image of a plant/leaf.
-Identify any diseases, pests, or nutrient deficiencies visible.
+You are an expert plant pathologist and agrarian scientist. Analyze this image of a plant/leaf/pest.
+${typeContext}
 
 ${langInstruction}
 
