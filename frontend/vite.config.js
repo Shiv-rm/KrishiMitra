@@ -32,8 +32,16 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/post': 'http://localhost:3000',
-      '/api': 'http://localhost:3000'
+      '/post': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   build: {

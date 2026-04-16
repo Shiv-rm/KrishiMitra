@@ -31,7 +31,14 @@ const port = 3000
 // Increased limit for large base64 image uploads
 app.use(express.json({ limit: '10mb' }))
 app.use(cors())
-// Static serving handled by Vite in development
+
+// Request logger - displays all requests in server console
+// app.use((req, res, next) => {
+//   console.log(`Backend Request: ${req.method} ${req.url}`);
+//   next();
+// });
+
+app.get('/', (req, res) => res.send('KrishiMitra Backend is running.'));
 
 async function loadNutrientData() {
   return new Promise((resolve) => {
@@ -101,6 +108,7 @@ function debounce(func, delay) {
     }, delay);
   };
 }
+
 async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (!depth.endsWith("cm")) depth += "cm";
 
@@ -141,7 +149,6 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   return Math.round((median / 10) * 100) / 100;
 }
 // Soil pH fetch handled directly in /post route
-
 
 
 async function getClimateAverages(lat, lon) {
@@ -196,11 +203,6 @@ app.post('/post', async (req, res) => {
   if (!Latitude || !Longitude) {
     return res.status(400).json({ error: "Missing Latitude or Longitude" });
   }
-  // const randomres = getRandomLocationInIndia();
-
-  console.log(`\nLatitude: ${lat}, Longitude: ${lon}`);
-  getStateFromCoords(lat, lon)
-    .then(state => console.log(state));
 
   // Generate a random jobId (we can use simple crypto or Date.now)
   const jobId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -270,7 +272,7 @@ app.post('/post', async (req, res) => {
 app.get('/api/job/:jobId', (req, res) => {
   const job = activeJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job not found' });
-  
+
   res.json(job);
   // Optionally clean up the job if it's completed or failed to save memory
   if (job.status === 'completed' || job.status === 'failed') {
@@ -282,7 +284,7 @@ app.get('/api/job/:jobId', (req, res) => {
 
 // Realistic Market Trends Implementation
 const BASE_PRICES = {
-  'rice': 2200, 'wheat': 2125, 'mango': 3500, 'banana': 1800, 'cotton': 6000, 
+  'rice': 2200, 'wheat': 2125, 'mango': 3500, 'banana': 1800, 'cotton': 6000,
   'apple': 7000, 'maize': 2000, 'grapes': 4000, 'papaya': 2500, 'coconut': 3000
 };
 
@@ -290,7 +292,7 @@ app.post('/api/market-trends', (req, res) => {
   const result = req.body;
   console.log("Analysing market trends...");
   const crop = (result.top_recommendation || result.crop || '').toLowerCase();
-  
+
   const basePrice = BASE_PRICES[crop] || 2500;
   // Fluctuate between -5% and +5% of base price based on a daily seed
   const today = new Date().toISOString().slice(0, 10);
@@ -300,7 +302,7 @@ app.post('/api/market-trends', (req, res) => {
   }
   const varianceOptions = [-0.05, -0.02, 0, 0.02, 0.05];
   const variance = varianceOptions[Math.abs(hash) % varianceOptions.length];
-  
+
   const currentPricePerQuintal = Math.floor(basePrice * (1 + variance));
   const trend = variance > 0 ? "Upward" : variance < 0 ? "Downward" : "Stable";
   const demand = variance > 0 ? "High" : variance < 0 ? "Low" : "Medium";
@@ -329,10 +331,10 @@ app.get('/api/weather', async (req, res) => {
     const weatherData = await response.json();
 
     // Use Groq to generate a crop-specific alert based on the weather
-    const systemInstruction = lang === 'hi' 
-      ? 'आप मौसम और कृषि के विशेषज्ञ हैं। वर्तमान मौसम के आधार पर फसल के लिए केवल एक वाक्य का अलर्ट दें (हिंदी में)।' 
+    const systemInstruction = lang === 'hi'
+      ? 'आप मौसम और कृषि के विशेषज्ञ हैं। वर्तमान मौसम के आधार पर फसल के लिए केवल एक वाक्य का अलर्ट दें (हिंदी में)।'
       : 'You are a weather and agriculture expert. Give a single-sentence crop alert based on the current weather (in English).';
-    
+
     let cropAlert = "Weather conditions are stable.";
     if (crop) {
       const condition = `Temp: ${weatherData.current_weather.temperature}°C, Daily Rain: ${weatherData.daily?.precipitation_sum[0] || 0}mm.`;
@@ -613,7 +615,7 @@ app.post('/api/crop-history', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
     const { crop_name, season_year } = req.body;
     if (!crop_name) return res.status(400).json({ error: 'crop_name required' });
-    
+
     await db.query('INSERT INTO crop_history (user_id, crop_name, season_year) VALUES ($1, $2, $3)', [userId, crop_name, season_year]);
     res.json({ success: true });
   } catch (err) {
@@ -646,7 +648,7 @@ app.post('/api/ledger', async (req, res) => {
     if (!type || !amount || !category) {
       return res.status(400).json({ error: 'Type, amount, and category are required.' });
     }
-    
+
     const result = await db.query(
       'INSERT INTO ledger_entries (user_id, type, amount, category, description) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [userId, type, amount, category, description]
@@ -663,7 +665,7 @@ app.delete('/api/ledger/:id', async (req, res) => {
   try {
     const userId = getUserIdFromToken(req);
     if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
-    
+
     // Ensure the entry belongs to the user
     await db.query('DELETE FROM ledger_entries WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
     res.json({ success: true });
@@ -679,14 +681,14 @@ app.post('/api/loan-analysis', async (req, res) => {
   try {
     const userId = getUserIdFromToken(req);
     if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
-    
+
     // Fetch basic user details from the DB
     const userResult = await db.query('SELECT full_name, state, crop_type, land_size, land_unit FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
-    
+
     const user = userResult.rows[0];
     const { loan_type, amount, lang } = req.body;
-    
+
     const profile = {
       state: user.state,
       crop_type: user.crop_type,
@@ -795,6 +797,12 @@ async function startServer() {
         });
       });
     });
+
+    // Catch-all route for debugging 404s
+    // app.use((req, res) => {
+    //   console.warn(`404 NOT FOUND: ${req.method} ${req.url}`);
+    //   res.status(404).json({ error: `Route ${req.method} ${req.url} not found on this server.` });
+    // });
 
     const server = httpServer.listen(port, () => {
       console.log(`KrishiMitra server is live at http://localhost:${port}`);

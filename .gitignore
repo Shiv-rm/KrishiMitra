@@ -1,6 +1,7 @@
 # ========================
 # Node.js / npm
 # ========================
+node_modules
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -79,5 +80,7 @@ logs/
 
 multilingual
 backend/disease_prediction/sample_cropdisease_dataset
+
 backend/disease_prediction/mobilenet_crop_disease_final.keras
+
 backend/disease_prediction/crop_disease_prediction.ipynb

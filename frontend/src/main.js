@@ -42,7 +42,7 @@ async function loadHistory() {
                 else list.innerHTML = history.map(h => `<li style="padding:8px 0; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between;"><strong>${h.crop_name}</strong> <span style="font-size:0.85rem; color:#666;">${h.season_year || ''}</span></li>`).join('');
             }
         }
-    } catch(e) { console.error('Failed to load crop history', e); }
+    } catch (e) { console.error('Failed to load crop history', e); }
 }
 
 const addHistoryBtn = document.getElementById("add-history-btn");
@@ -65,7 +65,7 @@ if (addHistoryBtn) {
                 document.getElementById("history-season-input").value = "";
                 await loadHistory();
             } else alert("Failed to add crop history.");
-        } catch(e) { console.error(e); }
+        } catch (e) { console.error(e); }
         addHistoryBtn.disabled = false;
     });
 }
@@ -87,16 +87,23 @@ async function loadUserProfile() {
             headers: { 'Authorization': `Bearer ${kmToken}` }
         });
         if (res.ok) {
-            const data = await res.json();
-            userProfile = {
-                land_size: data.land_size || 1,
-                land_unit: data.land_unit || 'acres'
-            };
-            await loadHistory();
-            console.log('User profile loaded:', userProfile);
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const data = await res.json();
+                userProfile = {
+                    land_size: data.land_size || 1,
+                    land_unit: data.land_unit || 'acres'
+                };
+                await loadHistory();
+                console.log('User profile loaded:', userProfile);
+            } else {
+                console.warn('Expected JSON for user profile, but got something else.');
+            }
+        } else {
+            console.warn(`Failed to fetch user profile: ${res.status}`);
         }
     } catch (e) {
-        console.warn('Could not fetch user profile, using defaults.');
+        console.warn('Could not fetch user profile, using defaults.', e);
     }
 }
 
@@ -226,10 +233,19 @@ async function sendToBackend(latitude, longitude) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ Latitude: latitude, Longitude: longitude })
         });
-        const jobInit = await response.json();
-        // const result = await response.json();
 
-        console.log("result", result);
+        if (!response.ok) {
+            updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} Server returned ${response.status}</span>`);
+            locateBtn.disabled = false;
+            return;
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server did not return JSON");
+        }
+
+        const jobInit = await response.json();
 
         if (jobInit.error) {
             updateStatus(`<span style="color:#c62828;">${t("errorPrefix")} ${jobInit.error}</span>`);
@@ -245,7 +261,7 @@ async function sendToBackend(latitude, longitude) {
             await new Promise(r => setTimeout(r, 2000));
             const jobRes = await fetch(`/api/job/${jobId}`);
             if (!jobRes.ok) continue;
-            
+
             const jobData = await jobRes.json();
             if (jobData.status === 'completed') {
                 result = jobData.result;
@@ -300,6 +316,9 @@ async function sendToBackend(latitude, longitude) {
     }
 }
 
+locateBtn.addEventListener('click', getLocation);
+
+
 // ── Save analysis to DB ───────────────────────────────────────────────────────
 async function saveAnalysis(result) {
     try {
@@ -321,8 +340,17 @@ async function loadCachedAnalysis() {
         const res = await fetch('/api/my-analysis', {
             headers: { 'Authorization': `Bearer ${kmToken}` }
         });
+        if (!res.ok) {
+            console.log("No cached analysis or server error.");
+            return;
+        }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            console.warn("Cached analysis response is not JSON.");
+            return;
+        }
         const data = await res.json();
-        if (data.analysis) {
+        if (data && data.analysis) {
             lastResult = data.analysis;
             displayResults(data.analysis);
             const when = new Date(data.analysed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -430,12 +458,12 @@ function displayResults(data) {
     if (data.weather && !data.weather.error) {
         let dailyForecasts = '';
         if (data.weather.daily && data.weather.daily.time) {
-            dailyForecasts = data.weather.daily.time.slice(0,3).map((date, idx) => {
+            dailyForecasts = data.weather.daily.time.slice(0, 3).map((date, idx) => {
                 const maxT = data.weather.daily.temperature_2m_max[idx];
                 const minT = data.weather.daily.temperature_2m_min[idx];
                 const rain = data.weather.daily.precipitation_sum[idx];
                 return `<div style="text-align:center; padding:10px; background:#fff; border-radius:8px; flex: 1;">
-                    <div style="font-weight:600; font-size:0.85rem;">${new Date(date).toLocaleDateString(undefined, {weekday:'short'})}</div>
+                    <div style="font-weight:600; font-size:0.85rem;">${new Date(date).toLocaleDateString(undefined, { weekday: 'short' })}</div>
                     <div style="font-size:1.1rem; margin:5px 0;">${maxT}°/ ${minT}°</div>
                     <div style="font-size:0.8rem; color:#1976d2;">🌧️ ${rain}mm</div>
                 </div>`;
@@ -630,8 +658,6 @@ function geoError(err) {
     }
 }
 
-locateBtn.addEventListener('click', getLocation);
-
 // ── Pest Image Upload Dropzone ─────────────────────────────────────────────────
 const dropzone = document.getElementById('pest-upload-dropzone');
 if (dropzone) {
@@ -804,7 +830,7 @@ if (ledgerForm) {
     ledgerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!kmToken) return alert("Please login first.");
-        
+
         const type = document.getElementById("ledger-type").value;
         const category = document.getElementById("ledger-category").value;
         const amount = document.getElementById("ledger-amount").value;
@@ -813,7 +839,7 @@ if (ledgerForm) {
         try {
             const res = await fetch('/api/ledger', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${kmToken}`
                 },
@@ -872,16 +898,16 @@ function initForum() {
     socket.on('forumMessage', (data) => {
         const msgDiv = document.createElement('div');
         msgDiv.style = 'background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
-        
+
         const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
+
         msgDiv.innerHTML = `
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">
                 <strong style="color: var(--text-main);">${data.author}</strong> • ${time}
             </div>
             <div style="font-size: 0.95rem; line-height: 1.4;">${data.msg}</div>
         `;
-        
+
         forumChatBox.appendChild(msgDiv);
         forumChatBox.scrollTop = forumChatBox.scrollHeight;
     });
@@ -901,7 +927,7 @@ if (forumForm) {
             try {
                 const payload = JSON.parse(atob(kmToken.split('.')[1]));
                 author = payload.full_name || author;
-            } catch (err) {}
+            } catch (err) { }
         }
 
         socket.emit('forumMessage', {
@@ -932,7 +958,7 @@ const loanSubmitBtn = document.getElementById("loan-submit-btn");
 if (loanForm) {
     loanForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         if (!kmToken) {
             alert("Please login first to check your eligibility!");
             return;
@@ -940,7 +966,7 @@ if (loanForm) {
 
         const loanType = loanTypeInput.value.trim();
         const amount = loanAmountInput.value.trim();
-        
+
         loanSubmitBtn.disabled = true;
         loanSubmitBtn.textContent = "Analyzing...";
         loanResults.classList.remove('hidden');
@@ -949,19 +975,19 @@ if (loanForm) {
         try {
             const res = await fetch('/api/loan-analysis', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${kmToken}`
                 },
-                body: JSON.stringify({ 
-                    loan_type: loanType, 
+                body: JSON.stringify({
+                    loan_type: loanType,
                     amount: amount,
-                    lang: getLang() 
+                    lang: getLang()
                 })
             });
 
             const data = await res.json();
-            
+
             if (!res.ok) {
                 loanResults.innerHTML = `<p style="color: red;">${data.error || 'Failed to perform loan analysis.'}</p>`;
             } else {
@@ -1051,7 +1077,7 @@ if (soilAnalyzeBtn) {
                 });
 
                 const data = await res.json();
-                
+
                 if (!res.ok) {
                     soilStatus.innerHTML = `<span style="color:red;">${data.error || 'Failed to analyze.'}</span>`;
                 } else {
@@ -1099,7 +1125,7 @@ if (diseaseBtn) {
                 } else {
                     diseaseStatus.innerHTML = "";
                     const diseaseName = (data.prediction || "Unknown Issue").replace(/___/g, " - ").replace(/_/g, " ");
-                    
+
                     // Robust confidence check
                     let confidenceDisplay = "N/A";
                     if (data.confidence !== undefined && data.confidence !== null) {
@@ -1108,7 +1134,7 @@ if (diseaseBtn) {
                             confidenceDisplay = `${confNum.toFixed(1)}%`;
                         }
                     }
-                    
+
                     diseaseResultsContainer.innerHTML = `
                         <div style="background: rgba(198, 40, 40, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(198, 40, 40, 0.2);">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
