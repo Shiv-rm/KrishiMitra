@@ -457,7 +457,7 @@ app.post('/api/register', async (req, res) => {
       delete otps[phone];
 
       const userId = result.rows[0].id;
-      const token = jwt.sign({ id: userId, phone }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ id: userId, phone, full_name: fullName }, JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({
         message: "User registered successfully",
         token,
@@ -493,7 +493,7 @@ app.post('/api/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: "Invalid phone number or password." });
 
-    const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, phone: user.phone, full_name: user.full_name }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       message: "Login successful",
