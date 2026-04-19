@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { getDiseaseAdvice } from '../groq_ai_service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
@@ -50,10 +51,23 @@ export async function analyzeCropDiseaseImage(imageBase64, lang = 'en') {
             throw new Error("Invalid output format from prediction model.");
         }
 
-        // 6. Return the diagnostic results
+        // 6. Augment with AI advice (treatments, prevention, etc.) in both languages
+        let advice = { 
+            en: { analysis: "", treatments: [], prevention: [] }, 
+            hi: { analysis: "", treatments: [], prevention: [] } 
+        };
+        try {
+            const cleanName = result.prediction.replace(/___/g, " - ").replace(/_/g, " ");
+            advice = await getDiseaseAdvice(cleanName);
+        } catch (aiError) {
+            console.error("AI Advice enrichment failed:", aiError);
+        }
+
+        // 7. Return the diagnostic results
         return {
             status: "success",
             ...result,
+            advice: advice, // Pass the whole dual-language object
             timestamp: new Date().toISOString()
         };
 

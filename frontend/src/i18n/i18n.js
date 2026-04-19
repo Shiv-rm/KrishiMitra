@@ -178,6 +178,8 @@ const translations = {
     dashPestTreatments: "Recommended Treatments:",
     dashPestPrevention: "Preventive Measures:",
     dashErrConnection: "Connection error.",
+    diseaseAnalysisFallback: "Our model has identified symptoms consistent with this disease. Please follow the recommended treatments and preventive measures below.",
+    diseaseTip: "💡 Tip: You can use our AI Chatbot for detailed treatment steps for this specific disease.",
 
     // Chat UI
     chatGreeting: "Hello! Ask me about crops, diseases, or weather.",
@@ -365,6 +367,8 @@ const translations = {
     dashPestTreatments: "अनुशंसित उपचार:",
     dashPestPrevention: "निवारक उपाय:",
     dashErrConnection: "कनेक्शन त्रुटि।",
+    diseaseAnalysisFallback: "हमारे मॉडल ने इस बीमारी के लक्षणों की पहचान की है। कृपया नीचे दिए गए अनुशंसित उपचारों और निवारक उपायों का पालन करें।",
+    diseaseTip: "💡 सुझाव: आप इस विशिष्ट बीमारी के विस्तृत उपचार चरणों के लिए हमारे AI चैटबॉट का उपयोग कर सकते हैं।",
 
     // Chat UI
     chatGreeting: "नमस्ते! मुझसे फसलों, बीमारियों या मौसम के बारे में पूछें।",

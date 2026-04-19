@@ -412,3 +412,54 @@ Format strictly as JSON:
     return { error: "Failed to analyze soil image.", soil_type: "Unknown", analysis: "N/A" };
   }
 }
+
+/**
+ * Gets expert advice (analysis, treatments, prevention) for a specific disease name found by the model.
+ * Returns advice in both English and Hindi to support dynamic UI switching.
+ */
+export async function getDiseaseAdvice(diseaseName) {
+    if (!process.env.GROQ_API_KEY) {
+        return {
+            en: { analysis: "AI service not available.", treatments: [], prevention: [] },
+            hi: { analysis: "AI सेवा उपलब्ध नहीं है।", treatments: [], prevention: [] }
+        };
+    }
+
+    try {
+        const prompt = `
+You are an expert plant pathologist. A crop has been diagnosed with: "${diseaseName}".
+Provide a concise expert analysis, recommended treatments, and preventive measures.
+You MUST provide the response in BOTH English and Hindi.
+
+You MUST respond strictly with valid JSON. Return ONLY the JSON object.
+Format exactly as:
+{
+  "en": {
+    "analysis": "English analysis here...",
+    "treatments": ["English treatment 1", "English treatment 2"],
+    "prevention": ["English prevention 1", "English prevention 2"]
+  },
+  "hi": {
+    "analysis": "Hindi analysis here...",
+    "treatments": ["Hindi treatment 1", "Hindi treatment 2"],
+    "prevention": ["Hindi prevention 1", "Hindi prevention 2"]
+  }
+}
+`;
+
+        const response = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            response_format: { type: "json_object" }
+        });
+
+        return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+        console.error("Groq Disease Advice Error:", error);
+        return {
+            en: { analysis: "Failed to fetch AI advice.", treatments: [], prevention: [] },
+            hi: { analysis: "AI सलाह प्राप्त करने में विफल।", treatments: [], prevention: [] }
+        };
+    }
+}

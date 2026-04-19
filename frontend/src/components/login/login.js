@@ -157,7 +157,7 @@ form.addEventListener('submit', async (e) => {
 
     // Redirect to dashboard
     setTimeout(() => {
-      window.location.href = './index.html';
+      window.location.href = '../../../index.html';
     }, 1000);
 
   } catch (err) {
@@ -188,5 +188,5 @@ forgotLink.addEventListener('click', (e) => {
 
 registerLink.addEventListener('click', (e) => {
   e.preventDefault();
-  window.location.href = './register.html';
+  window.location.href = '../register/register.html';
 });

@@ -68,7 +68,7 @@ def run_prediction(img_path):
         
         result = {
             "prediction": CLASS_NAMES[top_idx],
-            "confidence": f"{round(confidence * 100, 2)}%",
+            "confidence": round(float(confidence) * 100, 2),
             "top_predictions": all_predictions
         }
         

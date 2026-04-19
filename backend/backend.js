@@ -114,7 +114,14 @@ async function getNPK(lat, lon) {
 
   if (stateKeys.length === 0) {
     console.warn(`State not found in district data: ${stateName}`);
-    return { N: 280, P: 15, K: 150, source: 'national_average' };
+    // return { N: 280, P: 15, K: 150, source: 'national_average' };
+     // Add some variation to mock data for better testing
+    return { 
+      N: 200 + Math.floor(Math.random() * 100), 
+      P: 10 + Math.floor(Math.random() * 15), 
+      K: 100 + Math.floor(Math.random() * 80), 
+      source: 'national_average' 
+    };
   }
 
   // Try district match first

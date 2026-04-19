@@ -4,7 +4,7 @@ import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n/i18
 // ── Auth Gate: redirect to login if not authenticated ──────────────────────────
 const kmToken = localStorage.getItem('km_token');
 if (!kmToken) {
-    window.location.href = './login.html';
+    window.location.href = './src/components/login/login.html';
 }
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -78,6 +78,7 @@ const diseaseInput = document.getElementById("disease-image-upload-dashboard");
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let lastResult = null;
+let lastDiseaseResult = null;
 let userProfile = { land_size: 1, land_unit: 'acres' }; // default fallback
 
 // ── Fetch user profile from backend for accurate land size ────────────────────
@@ -157,6 +158,9 @@ onLangChange(lang => {
     if (lastResult && !resultsContainer.classList.contains("hidden")) {
         displayResults(lastResult);
     }
+    if (lastDiseaseResult) {
+        renderDiseaseResults(lastDiseaseResult);
+    }
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -186,7 +190,7 @@ function updateNavForUser() {
                 e.preventDefault();
                 localStorage.removeItem('km_token');
                 localStorage.removeItem('km_user');
-                window.location.href = './login.html';
+                window.location.href = './src/components/login/login.html';
             });
         } catch (e) { console.error("Failed to parse user session", e); }
     }
@@ -1124,45 +1128,8 @@ if (diseaseBtn) {
                     diseaseStatus.innerHTML = `<span style="color:#c62828;">${data.error || t('dashErrDiseaseAnalyze')}</span>`;
                 } else {
                     diseaseStatus.innerHTML = "";
-                    const diseaseName = (data.prediction || "Unknown Issue").replace(/___/g, " - ").replace(/_/g, " ");
-
-                    // Robust confidence check
-                    let confidenceDisplay = "N/A";
-                    if (data.confidence !== undefined && data.confidence !== null) {
-                        const confNum = Number(data.confidence);
-                        if (!isNaN(confNum)) {
-                            confidenceDisplay = `${confNum.toFixed(1)}%`;
-                        }
-                    }
-
-                    diseaseResultsContainer.innerHTML = `
-                        <div style="background: rgba(198, 40, 40, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(198, 40, 40, 0.2);">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                                <h3 style="color: #c62828; margin: 0; font-size: 1.25rem; font-weight: 700;">${diseaseName}</h3>
-                                <div style="background: #c62828; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                                    ${confidenceDisplay} ${t('dashConfidence')}
-                                </div>
-                            </div>
-                            
-                            <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">
-                                ${data.analysis || "Our model has identified symptoms consistent with the disease mentioned above. Please view recommendations below."}
-                            </p>
-                            
-                            ${data.treatments ? `
-                            <div style="margin-top: 15px;">
-                                <strong style="color: #2e7d32;">Recommended Actions</strong>
-                                <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 8px; font-size: 0.9rem;">
-                                    ${data.treatments.map(t => `<li>${t}</li>`).join('')}
-                                </ul>
-                            </div>
-                            ` : `
-                            <div style="background: #fff8e1; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #856404; margin-top: 10px;">
-                                💡 Tip: You can use our AI Chatbot for detailed treatment steps for this specific disease.
-                            </div>
-                            `}
-                        </div>
-                    `;
-                    diseaseResultsContainer.classList.remove("hidden");
+                    lastDiseaseResult = data;
+                    renderDiseaseResults(data);
                 }
                 diseaseBtn.disabled = false;
             };
@@ -1173,4 +1140,60 @@ if (diseaseBtn) {
             diseaseBtn.disabled = false;
         }
     });
+}
+
+function renderDiseaseResults(data) {
+    if (!data || !diseaseResultsContainer) return;
+
+    const lang = getLang();
+    const diseaseName = (data.prediction || "Unknown Issue").replace(/___/g, " - ").replace(/_/g, " ");
+
+    // Robust confidence check
+    let confidenceDisplay = "N/A";
+    if (data.confidence !== undefined && data.confidence !== null) {
+        const rawConf = String(data.confidence).replace('%', '');
+        const confNum = Number(rawConf);
+        if (!isNaN(confNum)) {
+            confidenceDisplay = `${confNum.toFixed(1)}%`;
+        }
+    }
+
+    // Get advice for the current language
+    const advice = (data.advice && data.advice[lang]) ? data.advice[lang] : { analysis: "", treatments: [], prevention: [] };
+
+    diseaseResultsContainer.innerHTML = `
+        <div style="background: rgba(198, 40, 40, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(198, 40, 40, 0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <h3 style="color: #c62828; margin: 0; font-size: 1.25rem; font-weight: 700;">${diseaseName}</h3>
+                <div style="background: #c62828; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                    ${confidenceDisplay} ${t('dashConfidence')}
+                </div>
+            </div>
+            
+            <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">
+                ${advice.analysis || t('diseaseAnalysisFallback')}
+            </p>
+            
+            ${(advice.treatments && advice.treatments.length > 0) ? `
+            <div style="margin-top: 15px;">
+                <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
+                <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 8px; font-size: 0.9rem;">
+                    ${advice.treatments.map(t => `<li>${t}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <strong style="color: #1976d2;">${t('dashPestPrevention')}</strong>
+                <ul style="padding-left: 20px; color: var(--text-muted); margin-top: 8px; font-size: 0.9rem;">
+                    ${(advice.prevention || []).map(p => `<li>${p}</li>`).join('')}
+                </ul>
+            </div>
+            ` : `
+            <div style="background: #fff8e1; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #856404; margin-top: 10px;">
+                ${t('diseaseTip')}
+            </div>
+            `}
+        </div>
+    `;
+    diseaseResultsContainer.classList.remove("hidden");
 }
