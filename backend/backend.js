@@ -1,8 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import { fromArrayBuffer } from 'geotiff';
-import fs from 'fs';
-import csv from 'csv-parser';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
@@ -11,7 +9,152 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { readFileSync } from 'fs';
+const districtRaw = JSON.parse(readFileSync('./districtnutrient.json', 'utf8'));
 
+// Build district lookup map at startup
+const districtNPK = {};
+
+for (const entry of districtRaw.data) {
+  const stateName    = entry.state?.name?.toUpperCase();
+  const districtName = entry.district?.name?.toUpperCase();
+
+  if (!stateName || !districtName) continue;
+
+  const key = `${stateName}|${districtName}`;
+
+  if (!districtNPK[key]) {
+    districtNPK[key] = {
+      nHigh: 0, nMedium: 0, nLow: 0,
+      pHigh: 0, pMedium: 0, pLow: 0,
+      kHigh: 0, kMedium: 0, kLow: 0,
+      state: stateName,
+      district: districtName
+    };
+  }
+
+  const r = entry.results;
+  districtNPK[key].nHigh   += r.n.High;
+  districtNPK[key].nMedium += r.n.Medium;
+  districtNPK[key].nLow    += r.n.Low;
+  districtNPK[key].pHigh   += r.p.High;
+  districtNPK[key].pMedium += r.p.Medium;
+  districtNPK[key].pLow    += r.p.Low;
+  districtNPK[key].kHigh   += r.k.High;
+  districtNPK[key].kMedium += r.k.Medium;
+  districtNPK[key].kLow    += r.k.Low;
+}
+
+console.log(`Loaded ${Object.keys(districtNPK).length} district NPK entries`);
+
+function estimateNutrient(high, medium, low, ranges) {
+  const total = high + medium + low;
+  if (total === 0) return ranges.medium;
+  return Math.round(
+    ((high / total) * ranges.high) +
+    ((medium / total) * ranges.medium) +
+    ((low / total) * ranges.low)
+  );
+}
+
+function fuzzyMatch(target, candidates) {
+  const clean = s => s.toUpperCase().replace(/[^A-Z]/g, '');
+  const t = clean(target);
+  return candidates.find(c => {
+    const k = clean(c);
+    return k === t || k.includes(t) || t.includes(k);
+  });
+}
+
+async function getLocationFromCoords(lat, lon) {
+  // Try Nominatim first
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`,
+      { headers: { 'User-Agent': 'KrishiMitra/1.0' }, signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    return {
+      state:    data.address?.state,
+      district: data.address?.county || data.address?.state_district
+    };
+  } catch {
+    // Fallback to BigDataCloud
+    try {
+      const res = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+      );
+      const data = await res.json();
+      return {
+        state:    data.principalSubdivision,
+        district: data.locality
+      };
+    } catch {
+      return { state: null, district: null };
+    }
+  }
+}
+
+async function getNPK(lat, lon) {
+  const { state: stateName, district: districtName } = await getLocationFromCoords(lat, lon);
+
+  console.log(`Geocoded → state: "${stateName}", district: "${districtName}"`);
+
+  if (!stateName) {
+    return { N: 280, P: 15, K: 150, source: 'national_average' };
+  }
+
+  const clean = s => s.toUpperCase().replace(/[^A-Z]/g, '');
+
+  // Find all keys for this state
+  const stateKeys = Object.keys(districtNPK).filter(k =>
+    clean(k.split('|')[0]).includes(clean(stateName)) ||
+    clean(stateName).includes(clean(k.split('|')[0]))
+  );
+
+  if (stateKeys.length === 0) {
+    console.warn(`State not found in district data: ${stateName}`);
+    return { N: 280, P: 15, K: 150, source: 'national_average' };
+  }
+
+  // Try district match first
+  if (districtName) {
+    const districtNames = stateKeys.map(k => k.split('|')[1]);
+    const matchedDistrict = fuzzyMatch(districtName, districtNames);
+
+    if (matchedDistrict) {
+      // Find the actual key (state name might differ slightly)
+      const key = stateKeys.find(k => k.split('|')[1] === matchedDistrict);
+      const d = districtNPK[key];
+      return {
+        N: estimateNutrient(d.nHigh, d.nMedium, d.nLow, { high: 700, medium: 420, low: 140 }),
+        P: estimateNutrient(d.pHigh, d.pMedium, d.pLow, { high: 35,  medium: 17,  low: 5   }),
+        K: estimateNutrient(d.kHigh, d.kMedium, d.kLow, { high: 350, medium: 194, low: 54  }),
+        source: `district:${matchedDistrict},${stateName}`
+      };
+    }
+    console.warn(`District not found: "${districtName}" in ${stateName}, falling back to state average`);
+  }
+
+  // Fallback — aggregate all districts in the state
+  const stateTotal = {
+    nHigh: 0, nMedium: 0, nLow: 0,
+    pHigh: 0, pMedium: 0, pLow: 0,
+    kHigh: 0, kMedium: 0, kLow: 0
+  };
+  for (const k of stateKeys) {
+    const d = districtNPK[k];
+    stateTotal.nHigh   += d.nHigh;   stateTotal.nMedium += d.nMedium; stateTotal.nLow += d.nLow;
+    stateTotal.pHigh   += d.pHigh;   stateTotal.pMedium += d.pMedium; stateTotal.pLow += d.pLow;
+    stateTotal.kHigh   += d.kHigh;   stateTotal.kMedium += d.kMedium; stateTotal.kLow += d.kLow;
+  }
+  return {
+    N: estimateNutrient(stateTotal.nHigh, stateTotal.nMedium, stateTotal.nLow, { high: 700, medium: 420, low: 140 }),
+    P: estimateNutrient(stateTotal.pHigh, stateTotal.pMedium, stateTotal.pLow, { high: 35,  medium: 17,  low: 5   }),
+    K: estimateNutrient(stateTotal.kHigh, stateTotal.kMedium, stateTotal.kLow, { high: 350, medium: 194, low: 54  }),
+    source: `state_fallback:${stateName}`
+  };
+}
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
@@ -30,64 +173,12 @@ app.use(express.json({ limit: '10mb' }))
 app.use(cors())
 // Static serving handled by Vite in development
 
-async function loadNutrientData() {
-  return new Promise((resolve) => {
-    const data = {};
-    fs.createReadStream(path.join(__dirname, 'Nutrient.csv'))
-      .pipe(csv())
-      .on('data', (row) => {
-        const state = row.State.trim().toUpperCase();
-        data[state] = {
-          N: estimateNutrient(+row.n_High, +row.n_Medium, +row.n_Low,
-            { high: 700, medium: 420, low: 140 }),
-          P: estimateNutrient(+row.p_High, +row.p_Medium, +row.p_Low,
-            { high: 35, medium: 17, low: 5 }),
-          K: estimateNutrient(+row.k_High, +row.k_Medium, +row.k_Low,
-            { high: 350, medium: 194, low: 54 })
-        };
-      })
-      .on('end', () => resolve(data));
-  });
-}
 
-function estimateNutrient(highPct, mediumPct, lowPct, ranges) {
-  const total = highPct + mediumPct + lowPct;
-  if (total === 0) return ranges.medium; // fallback
-  return Math.round(
-    ((highPct / total) * ranges.high +
-      (mediumPct / total) * ranges.medium +
-      (lowPct / total) * ranges.low)
-  );
-}
 
-// Reverse geocode lat/lon → state using Open-Meteo geocoding or nominatim
-async function getStateFromCoords(lat, lon) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`,
-      { headers: { 'User-Agent': 'KrishiMitra/1.0' }, signal: AbortSignal.timeout(5000) }
-    );
-    const data = await res.json();
-    return data.address?.state?.toUpperCase() ?? null;
-  } catch {
-    const res = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
-    );
-    const data = await res.json();
-    return data.principalSubdivision?.toUpperCase() ?? null;
-  }
-}
-// Main function
-const nutrientData = await loadNutrientData();
 
-// Temporary test — bypass geocoding entirely
-async function getNPK(lat, lon) {
-  const state = await getStateFromCoords(lat, lon);
-  if (!state || !nutrientData[state]) {
-    return { N: 280, P: 15, K: 150, source: "national_average" };
-  }
-  return { ...nutrientData[state], source: `state_estimate:${state}` };
-}
+
+
+
 
 function debounce(func, delay) {
   let timeout;
