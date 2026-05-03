@@ -476,7 +476,7 @@ function displayResults(data) {
 
         weatherContainer.innerHTML = `
             <div style="display: flex; gap: 20px; font-size: 0.95rem; color: var(--text-main); margin-bottom: 12px; align-items:center;">
-                <div style="font-size: 2rem;">🌤️</div>
+                <div style="font-size: 2rem;"></div>
                 <div>
                     <div><strong>Current:</strong> ${data.weather.current?.temperature}°C</div>
                     <div style="color: #0288d1; font-weight:600; margin-top:4px;">&#9888; Alert: ${data.weather.alert}</div>

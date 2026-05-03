@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Redirects to avoid CORS issues
+# Replace 'https://krishimitra-backend.onrender.com' with your actual Render backend URL
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-app.onrender.com/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/post"
+  to = "https://your-backend-app.onrender.com/post"
+  status = 200
+
+# For SPA routing (if using React/Vue/etc. router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

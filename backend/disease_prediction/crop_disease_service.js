@@ -31,7 +31,7 @@ export async function analyzeCropDiseaseImage(imageBase64, lang = 'en') {
 
         // 3. Prepare paths for calling the Python script
         // Note: We use the same virtualenv path pattern as in backend.js
-        const pythonPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python');
+        const pythonPath = process.env.PYTHON_PATH || 'python3';
         const scriptPath = path.join(__dirname, 'crop_disease_predict.py');
 
         // 4. Execute the Python script

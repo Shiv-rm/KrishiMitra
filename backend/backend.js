@@ -74,6 +74,7 @@ async function getLocationFromCoords(lat, lon) {
       { headers: { 'User-Agent': 'KrishiMitra/1.0' }, signal: AbortSignal.timeout(5000) }
     );
     const data = await res.json();
+    console.log(data);
     return {
       state:    data.address?.state,
       district: data.address?.county || data.address?.state_district
@@ -176,11 +177,30 @@ import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, 
 import { analyzeCropDiseaseImage } from './disease_prediction/crop_disease_service.js';
 
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000
 
 // Increased limit for large base64 image uploads
 app.use(express.json({ limit: '10mb' }))
-app.use(cors())
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173', // Local Vite dev
+  'http://localhost:3000'
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      // For now, allow all during transition or if not specified, 
+      // but in production FRONTEND_URL should be set.
+      return callback(null, true); 
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}))
 
 // Request logger - displays all requests in server console
 // app.use((req, res, next) => {
@@ -337,7 +357,7 @@ app.post('/post', async (req, res) => {
       };
 
       console.log(`Job ${jobId} Aggregated Data:`, result);
-      const pythonPath = path.join(__dirname, '..', 'venv', 'bin', 'python');
+      const pythonPath = process.env.PYTHON_PATH || 'python3';
       const scriptPath = path.join(__dirname, 'predict.py');
       const args = `${result.N} ${result.P} ${result.K} ${result.temperature} ${result.humidity} ${result.ph} ${result.rainfall}`;
 
