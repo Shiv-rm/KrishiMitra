@@ -51,6 +51,7 @@ MANIFEST
 # ========================
 # backend/*.pkl
 # backend/*.csv
+.pth
 
 # ========================
 # Environment Variables
