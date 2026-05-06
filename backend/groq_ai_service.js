@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import * as dotenv from 'dotenv';
+import fs from 'fs';
 dotenv.config();
 
 // Create Groq instance
@@ -462,4 +463,25 @@ Format exactly as:
             hi: { analysis: "AI सलाह प्राप्त करने में विफल।", treatments: [], prevention: [] }
         };
     }
+}
+
+/**
+ * Transcribes an audio file to text using Groq's whisper model.
+ */
+export async function transcribeAudio(filePath, lang = 'hi') {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+  try {
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(filePath),
+      model: "whisper-large-v3",
+      language: lang,
+      response_format: "text",
+    });
+    return transcription;
+  } catch (error) {
+    console.error("Groq Audio Transcription Error:", error);
+    throw new Error("Failed to transcribe audio.");
+  }
 }
