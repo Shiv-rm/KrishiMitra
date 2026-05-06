@@ -9,14 +9,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { readFileSync } from 'fs';
-const districtRaw = JSON.parse(readFileSync('./districtnutrient.json', 'utf8'));
+import districtRaw from './districtnutrient.json' with { type: 'json' };
 
 // Build district lookup map at startup
 const districtNPK = {};
 
 for (const entry of districtRaw.data) {
-  const stateName    = entry.state?.name?.toUpperCase();
+  const stateName = entry.state?.name?.toUpperCase();
   const districtName = entry.district?.name?.toUpperCase();
 
   if (!stateName || !districtName) continue;
@@ -34,15 +33,15 @@ for (const entry of districtRaw.data) {
   }
 
   const r = entry.results;
-  districtNPK[key].nHigh   += r.n.High;
+  districtNPK[key].nHigh += r.n.High;
   districtNPK[key].nMedium += r.n.Medium;
-  districtNPK[key].nLow    += r.n.Low;
-  districtNPK[key].pHigh   += r.p.High;
+  districtNPK[key].nLow += r.n.Low;
+  districtNPK[key].pHigh += r.p.High;
   districtNPK[key].pMedium += r.p.Medium;
-  districtNPK[key].pLow    += r.p.Low;
-  districtNPK[key].kHigh   += r.k.High;
+  districtNPK[key].pLow += r.p.Low;
+  districtNPK[key].kHigh += r.k.High;
   districtNPK[key].kMedium += r.k.Medium;
-  districtNPK[key].kLow    += r.k.Low;
+  districtNPK[key].kLow += r.k.Low;
 }
 
 console.log(`Loaded ${Object.keys(districtNPK).length} district NPK entries`);
@@ -76,7 +75,7 @@ async function getLocationFromCoords(lat, lon) {
     const data = await res.json();
     console.log(data);
     return {
-      state:    data.address?.state,
+      state: data.address?.state,
       district: data.address?.county || data.address?.state_district
     };
   } catch {
@@ -87,7 +86,7 @@ async function getLocationFromCoords(lat, lon) {
       );
       const data = await res.json();
       return {
-        state:    data.principalSubdivision,
+        state: data.principalSubdivision,
         district: data.locality
       };
     } catch {
@@ -115,14 +114,7 @@ async function getNPK(lat, lon) {
 
   if (stateKeys.length === 0) {
     console.warn(`State not found in district data: ${stateName}`);
-    // return { N: 280, P: 15, K: 150, source: 'national_average' };
-     // Add some variation to mock data for better testing
-    return { 
-      N: 200 + Math.floor(Math.random() * 100), 
-      P: 10 + Math.floor(Math.random() * 15), 
-      K: 100 + Math.floor(Math.random() * 80), 
-      source: 'national_average' 
-    };
+    return { N: 280, P: 15, K: 150, source: 'national_average' };
   }
 
   // Try district match first
@@ -136,8 +128,8 @@ async function getNPK(lat, lon) {
       const d = districtNPK[key];
       return {
         N: estimateNutrient(d.nHigh, d.nMedium, d.nLow, { high: 700, medium: 420, low: 140 }),
-        P: estimateNutrient(d.pHigh, d.pMedium, d.pLow, { high: 35,  medium: 17,  low: 5   }),
-        K: estimateNutrient(d.kHigh, d.kMedium, d.kLow, { high: 350, medium: 194, low: 54  }),
+        P: estimateNutrient(d.pHigh, d.pMedium, d.pLow, { high: 35, medium: 17, low: 5 }),
+        K: estimateNutrient(d.kHigh, d.kMedium, d.kLow, { high: 350, medium: 194, low: 54 }),
         source: `district:${matchedDistrict},${stateName}`
       };
     }
@@ -152,17 +144,19 @@ async function getNPK(lat, lon) {
   };
   for (const k of stateKeys) {
     const d = districtNPK[k];
-    stateTotal.nHigh   += d.nHigh;   stateTotal.nMedium += d.nMedium; stateTotal.nLow += d.nLow;
-    stateTotal.pHigh   += d.pHigh;   stateTotal.pMedium += d.pMedium; stateTotal.pLow += d.pLow;
-    stateTotal.kHigh   += d.kHigh;   stateTotal.kMedium += d.kMedium; stateTotal.kLow += d.kLow;
+    stateTotal.nHigh += d.nHigh; stateTotal.nMedium += d.nMedium; stateTotal.nLow += d.nLow;
+    stateTotal.pHigh += d.pHigh; stateTotal.pMedium += d.pMedium; stateTotal.pLow += d.pLow;
+    stateTotal.kHigh += d.kHigh; stateTotal.kMedium += d.kMedium; stateTotal.kLow += d.kLow;
   }
   return {
     N: estimateNutrient(stateTotal.nHigh, stateTotal.nMedium, stateTotal.nLow, { high: 700, medium: 420, low: 140 }),
-    P: estimateNutrient(stateTotal.pHigh, stateTotal.pMedium, stateTotal.pLow, { high: 35,  medium: 17,  low: 5   }),
-    K: estimateNutrient(stateTotal.kHigh, stateTotal.kMedium, stateTotal.kLow, { high: 350, medium: 194, low: 54  }),
+    P: estimateNutrient(stateTotal.pHigh, stateTotal.pMedium, stateTotal.pLow, { high: 35, medium: 17, low: 5 }),
+    K: estimateNutrient(stateTotal.kHigh, stateTotal.kMedium, stateTotal.kLow, { high: 350, medium: 194, low: 54 }),
     source: `state_fallback:${stateName}`
   };
 }
+
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execPromise = promisify(exec);
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
@@ -172,9 +166,6 @@ import { pool as db, initializeDB } from './database/pdb.js';
 
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
 import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan, analyzeLoanEligibility, analyzeSoil } from './groq_ai_service.js';
-
-// Crop Disease Prediction
-import { analyzeCropDiseaseImage } from './disease_prediction/crop_disease_service.js';
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -214,6 +205,8 @@ app.get('/', (req, res) => res.send('KrishiMitra Backend is running.'));
 
 
 
+app.use(cors())
+// Static serving handled by Vite in development
 
 
 
@@ -226,7 +219,6 @@ function debounce(func, delay) {
     }, delay);
   };
 }
-
 async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
   if (!depth.endsWith("cm")) depth += "cm";
 
@@ -269,6 +261,7 @@ async function getSoilPhWCS(lat, lon, depth = "0-5cm") {
 // Soil pH fetch handled directly in /post route
 
 
+
 async function getClimateAverages(lat, lon) {
   const now = new Date();
   const month = now.getMonth(); // 0-indexed
@@ -299,16 +292,6 @@ async function getClimateAverages(lat, lon) {
     humidity: Math.round(params.RH2M[monthKey] * 100) / 100,
     // multiply mm/day by days in month to get mm/month
     rainfall: Math.round(params.PRECTOTCORR[monthKey] * days * 100) / 100
-  };
-}
-
-function getRandomLocationInIndia() {
-  const lat = Math.random() * (37.5 - 6.5) + 6.5;
-  const lon = Math.random() * (97.5 - 68) + 68;
-
-  return {
-    latitude: lat,
-    longitude: lon
   };
 }
 
@@ -575,7 +558,7 @@ app.post('/api/register', async (req, res) => {
       delete otps[phone];
 
       const userId = result.rows[0].id;
-      const token = jwt.sign({ id: userId, phone, full_name: fullName }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ id: userId, phone }, JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({
         message: "User registered successfully",
         token,
@@ -611,7 +594,7 @@ app.post('/api/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: "Invalid phone number or password." });
 
-    const token = jwt.sign({ id: user.id, phone: user.phone, full_name: user.full_name }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       message: "Login successful",
@@ -633,7 +616,7 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/analyze-disease', async (req, res) => {
   // Note: Request body size limit in Express defaults to 100kb, 
   // but json() might have been configured. We'll handle errors gracefully.
-  const { imageBase64, lang, type } = req.body;
+  const { imageBase64, lang } = req.body;
   if (!imageBase64) {
     return res.status(400).json({ error: "No imageBase64 data provided." });
   }
@@ -675,22 +658,6 @@ app.get('/api/pest-prediction', async (req, res) => {
     res.status(500).json({ error: 'Failed to generate pest prediction.' });
   }
 });
-
-// Crop Disease Prediction API
-app.post('/api/crop-disease-predict', async (req, res) => {
-  const { imageBase64, lang } = req.body;
-  if (!imageBase64) {
-    return res.status(400).json({ error: "No imageBase64 data provided." });
-  }
-  try {
-    const analysisData = await analyzeCropDiseaseImage(imageBase64, lang || 'en');
-    res.json(analysisData);
-  } catch (error) {
-    console.error("Error in /api/crop-disease-predict:", error);
-    res.status(500).json({ error: "Failed to analyze the image." });
-  }
-});
-
 
 // Get authenticated user profile (for land size)
 app.get('/api/me', async (req, res) => {
@@ -915,12 +882,6 @@ async function startServer() {
         });
       });
     });
-
-    // Catch-all route for debugging 404s
-    // app.use((req, res) => {
-    //   console.warn(`404 NOT FOUND: ${req.method} ${req.url}`);
-    //   res.status(404).json({ error: `Route ${req.method} ${req.url} not found on this server.` });
-    // });
 
     const server = httpServer.listen(port, () => {
       console.log(`KrishiMitra server is live at http://localhost:${port}`);
