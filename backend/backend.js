@@ -1,4 +1,5 @@
 import express from 'express'
+import fs from 'fs'
 import cors from 'cors'
 import { fromArrayBuffer } from 'geotiff';
 import { exec } from 'child_process';
@@ -165,7 +166,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_krishi_key';
 import { pool as db, initializeDB } from './database/pdb.js';
 
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
-import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan, analyzeLoanEligibility, analyzeSoil } from './groq_ai_service.js';
+import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan, analyzeLoanEligibility, analyzeSoil, getDiseaseAdvice } from './groq_ai_service.js';
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -610,21 +611,63 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/analyze-disease', async (req, res) => {
-  // Note: Request body size limit in Express defaults to 100kb, 
-  // but json() might have been configured. We'll handle errors gracefully.
-  const { imageBase64, lang } = req.body;
+  const { imageBase64, lang = 'en' } = req.body;
   if (!imageBase64) {
-    return res.status(400).json({ error: "No imageBase64 data provided." });
+    return res.status(400).json({ error: "No image data provided." });
   }
 
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+
+  const tempImagePath = path.join(tempDir, `pest_${Date.now()}.jpg`);
+  
   try {
-    const result = await analyzePestImage(imageBase64, lang);
-    res.json(result);
+    // 1. Save base64 to temp file
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    fs.writeFileSync(tempImagePath, Buffer.from(base64Data, 'base64'));
+
+    // 2. Run Python prediction script
+    const pythonPath = process.env.PYTHON_PATH || 'python3';
+    const scriptPath = path.join(__dirname, 'pest detection', 'predict_pest.py');
+    
+    console.log(`Running pest detection model on: ${tempImagePath}`);
+    const { stdout, stderr } = await execPromise(`"${pythonPath}" "${scriptPath}" "${tempImagePath}"`);
+    
+    if (stderr && !stdout) {
+      console.error("Python Prediction Error:", stderr);
+      throw new Error("Model prediction failed");
+    }
+
+    const predictionResult = JSON.parse(stdout.trim());
+    if (predictionResult.error) throw new Error(predictionResult.error);
+
+    const diseaseName = predictionResult.prediction;
+    const confidence = predictionResult.confidence;
+
+    console.log(`Model predicted: ${diseaseName} (${(confidence * 100).toFixed(2)}%)`);
+
+    // 3. Get detailed advice from Groq (LLM knows about treatments/prevention)
+    const advice = await getDiseaseAdvice(diseaseName);
+
+    // 4. Combine results based on language
+    const finalResult = {
+      disease: diseaseName,
+      confidence: confidence,
+      ...(advice[lang] || advice['en']),
+      isHealthy: diseaseName.toLowerCase().includes('healthy')
+    };
+
+    res.json(finalResult);
+
   } catch (error) {
     console.error('Error in /api/analyze-disease:', error);
-    res.status(500).json({ error: 'Failed to analyze image.' });
+    res.status(500).json({ error: 'Failed to analyze image using the model.' });
+  } finally {
+    // Cleanup
+    if (fs.existsSync(tempImagePath)) fs.unlinkSync(tempImagePath);
   }
 });
+
 
 // ── Soil Image Classification Endpoint ───────────────────────────────────────
 app.post('/api/analyze-soil', async (req, res) => {
