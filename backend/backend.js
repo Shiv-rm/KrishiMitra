@@ -201,10 +201,6 @@ app.use(cors({
 
 app.get('/', (req, res) => res.send('KrishiMitra Backend is running.'));
 
-
-
-
-
 app.use(cors())
 // Static serving handled by Vite in development
 

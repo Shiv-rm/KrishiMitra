@@ -10,7 +10,7 @@ import pandas as pd
 warnings.filterwarnings('ignore')
 
 # Paths
-MODELS_DIR = os.path.join(os.path.dirname(__file__), 'crop_recommendation/newmodels')
+MODELS_DIR = os.path.join(os.path.dirname(__file__), 'crop_recommendation/models')
 
 # Load XGB model and preprocessors
 try:
@@ -53,35 +53,8 @@ def predict():
         }])
 
         # Feature Engineering (matching the training script)
-        input_data['NPK_ratio'] = input_data['N'] / (input_data['P'] + input_data['K'] + 1)
-        input_data['total_nutrients'] = input_data['N'] + input_data['P'] + input_data['K']
-        input_data['temp_humidity_interaction'] = input_data['temperature'] * input_data['humidity']
-        input_data['rainfall_humidity_ratio'] = input_data['rainfall'] / (input_data['humidity'] + 1)
-
-        input_data['N_squared'] = input_data['N'] ** 2
-        input_data['P_squared'] = input_data['P'] ** 2
-        input_data['K_squared'] = input_data['K'] ** 2
-
-        # Temperature category binning [0, 15, 25, 35, 50]
-        # Labels: 0 (Cold), 1 (Moderate), 2 (Warm), 3 (Hot)
-        input_data['temp_category'] = pd.cut(
-            input_data['temperature'],
-            bins=[0, 15, 25, 35, 50],
-            labels=[0, 1, 2, 3],
-            include_lowest=True
-        ).fillna(1) # Default to 'Moderate' if NaN
-        
-        # Rainfall category binning [0, 50, 100, 150, 300]
-        # Labels: 0 (Low), 1 (Medium), 2 (High), 3 (Very_High)
-        input_data['rainfall_category'] = pd.cut(
-            input_data['rainfall'],
-            bins=[0, 50, 100, 150, 300],
-            labels=[0, 1, 2, 3],
-            include_lowest=True
-        ).fillna(1) # Default to 'Medium' if NaN
-        
-        input_data['temp_category'] = input_data['temp_category'].astype(int)
-        input_data['rainfall_category'] = input_data['rainfall_category'].astype(int)
+        input_data['NPK_mean'] = (input_data['N'] + input_data['P'] + input_data['K']) / 3
+        input_data['THI'] = input_data['temperature'] - 0.55 * (1 - input_data['humidity'] / 100) * (input_data['temperature'] - 14.5)
 
         # Ensure correct feature order
         input_data = input_data[FEATURE_NAMES]
