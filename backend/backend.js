@@ -167,6 +167,7 @@ import { pool as db, initializeDB } from './database/pdb.js';
 
 // import { getGeminiResponse, generateRoadmap, analyzePestImage, getPestPrediction } from './ai_service.js';
 import { getGroqResponse, generateRoadmap, analyzePestImage, getPestPrediction, generateCropRotationPlan, analyzeLoanEligibility, analyzeSoil, getDiseaseAdvice } from './groq_ai_service.js';
+import { analyzeCropDiseaseImage } from './disease_prediction/crop_disease_service.js';
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -610,7 +611,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/analyze-disease', async (req, res) => {
+app.post('/api/analyze-pest', async (req, res) => {
   const { imageBase64, lang = 'en' } = req.body;
   if (!imageBase64) {
     return res.status(400).json({ error: "No image data provided." });
@@ -665,6 +666,21 @@ app.post('/api/analyze-disease', async (req, res) => {
   } finally {
     // Cleanup
     if (fs.existsSync(tempImagePath)) fs.unlinkSync(tempImagePath);
+  }
+});
+
+// ── Crop Disease Classification Endpoint ───────────────────────────────────────
+app.post('/api/crop-disease-predict', async (req, res) => {
+  try {
+    const { imageBase64, lang = 'en' } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'No image provided' });
+
+    // Use the specialized MobileNetV2 model for Crop Disease
+    const result = await analyzeCropDiseaseImage(imageBase64, lang);
+    res.json(result);
+  } catch (error) {
+    console.error('Error in /api/crop-disease-predict:', error);
+    res.status(500).json({ error: 'Failed to analyze crop disease image.' });
   }
 });
 

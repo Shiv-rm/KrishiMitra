@@ -721,7 +721,7 @@ if (pestBtn) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64String = reader.result.split(',')[1];
-                const response = await fetch('/api/analyze-disease', {
+                const response = await fetch('/api/analyze-pest', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64String, lang: getLang(), type: 'pest' })
@@ -731,8 +731,26 @@ if (pestBtn) {
                     pestStatus.innerHTML = `<span style="color:#c62828;">${data.error || t('dashErrPestAnalyze')}</span>`;
                 } else {
                     pestStatus.innerHTML = "";
+                    
+                    // Confidence formatting
+                    let confidenceDisplay = "N/A";
+                    if (data.confidence !== undefined && data.confidence !== null) {
+                        const rawConf = String(data.confidence).replace('%', '');
+                        const confNum = Number(rawConf);
+                        if (!isNaN(confNum)) {
+                            // If confidence is 0.0-1.0, convert to %
+                            const displayVal = confNum <= 1 ? confNum * 100 : confNum;
+                            confidenceDisplay = `${displayVal.toFixed(1)}%`;
+                        }
+                    }
+
                     pestResults.innerHTML = `
-                        <h3 style="color: #c62828; margin-bottom: 10px; font-size: 1.1rem;">${data.disease || data.issue || t('dashPestUnknownIssue')}</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <h3 style="color: #c62828; margin: 0; font-size: 1.1rem; font-weight: 700;">${data.disease || data.issue || t('dashPestUnknownIssue')}</h3>
+                            <div style="background: #c62828; color: white; padding: 3px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                                ${confidenceDisplay} ${t('dashConfidence')}
+                            </div>
+                        </div>
                         <p style="color: var(--text-main); line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px;">${data.analysis || t('dashPestNoAnalysis')}</p>
                         <div style="margin-top: 10px;">
                             <strong style="color: #2e7d32;">${t('dashPestTreatments')}</strong>
@@ -748,6 +766,7 @@ if (pestBtn) {
                         </div>
                     `;
                     pestResults.classList.remove("hidden");
+
                 }
                 pestBtn.disabled = false;
             };
