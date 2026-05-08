@@ -303,6 +303,22 @@ app.post('/post', async (req, res) => {
     return res.status(400).json({ error: "Missing Latitude or Longitude" });
   }
 
+  // wb
+  const lat1 = 22.9786
+  const long1 = 87.7478
+
+  // har
+  const lat4 = 20.5937
+  const long4 = 78.9629
+
+  // kar
+  const lat5 = 15.5200
+  const long5 = 74.3400
+
+  // skm
+  const lat6 = 27.5329
+  const long6 = 88.5122
+
   // Generate a random jobId (we can use simple crypto or Date.now)
   const jobId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   activeJobs.set(jobId, { status: 'processing' });
@@ -724,7 +740,7 @@ app.get('/api/me', async (req, res) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     const result = await db.query(
-      'SELECT id, full_name, phone, land_size, land_unit FROM users WHERE id = $1',
+      'SELECT id, full_name, phone, state, district, village, land_size, land_unit, crop_type, created_at FROM users WHERE id = $1',
       [decoded.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });

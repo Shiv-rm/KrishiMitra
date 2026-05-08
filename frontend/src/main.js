@@ -1,13 +1,13 @@
 import './styles/global.css';
 import { t, setLang, getLang, applyTranslations, onLangChange } from './i18n/i18n.js';
 
-// ── Auth Gate: redirect to login if not authenticated ──────────────────────────
+// Auth Gate: redirect to login if not authenticated 
 const kmToken = localStorage.getItem('km_token');
 if (!kmToken) {
     window.location.href = './src/components/login/login.html';
 }
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
+// DOM refs 
 const statusDisplay = document.getElementById("status-message");
 const resultsContainer = document.getElementById("results-container");
 const locateBtn = document.getElementById("get-location-btn");
@@ -91,17 +91,10 @@ async function loadUserProfile() {
             const contentType = res.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
                 const data = await res.json();
-                userProfile = {
-                    land_size: data.land_size || 1,
-                    land_unit: data.land_unit || 'acres'
-                };
+                userProfile = data; // Save all user data
                 await loadHistory();
                 console.log('User profile loaded:', userProfile);
-            } else {
-                console.warn('Expected JSON for user profile, but got something else.');
             }
-        } else {
-            console.warn(`Failed to fetch user profile: ${res.status}`);
         }
     } catch (e) {
         console.warn('Could not fetch user profile, using defaults.', e);
@@ -175,25 +168,97 @@ function getWelcomeMessage(userName) {
 // before applyTranslations() can overwrite it.
 function updateNavForUser() {
     const userStr = localStorage.getItem('km_user');
-    const navLoginBtn = document.getElementById('nav-login');
-    if (!navLoginBtn) return;
+    const container = document.getElementById('user-menu-container');
+    if (!container) return;
+
     if (userStr) {
         try {
             const user = JSON.parse(userStr);
-            const firstName = (user.name || '').split(' ')[0] || 'User';
-            // Remove data-i18n so applyTranslations() won't overwrite this
-            navLoginBtn.removeAttribute('data-i18n');
-            navLoginBtn.textContent = `${getWelcomeMessage(firstName)} (Logout)`;
-            navLoginBtn.href = '#';
-            navLoginBtn.classList.add('logged-in');
-            navLoginBtn.addEventListener('click', (e) => {
-                e.preventDefault();
+            const fullName = user.name || 'User';
+            const firstName = fullName.split(' ')[0] || 'User';
+            const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+            container.innerHTML = `
+                <div class="user-profile-trigger" id="user-profile-trigger">
+                    <div class="user-avatar-circle">${initials}</div>
+                    <span class="user-name-display">${firstName}</span>
+                </div>
+                <div class="user-dropdown hidden" id="user-dropdown">
+                    <button class="dropdown-item" id="btn-view-profile">
+                        <span class="dropdown-icon"></span>
+                        <span>View Profile</span>
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button class="dropdown-item logout" id="btn-logout">
+                        <span class="dropdown-icon"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            `;
+
+            const trigger = document.getElementById('user-profile-trigger');
+            const dropdown = document.getElementById('user-dropdown');
+            const logoutBtn = document.getElementById('btn-logout');
+            const profileBtn = document.getElementById('btn-view-profile');
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', () => {
+                dropdown.classList.add('hidden');
+            });
+
+            logoutBtn.addEventListener('click', () => {
                 localStorage.removeItem('km_token');
                 localStorage.removeItem('km_user');
                 window.location.href = './src/components/login/login.html';
             });
-        } catch (e) { console.error("Failed to parse user session", e); }
+
+            profileBtn.addEventListener('click', () => {
+                showProfileModal();
+            });
+
+            // Close modal events
+            const profileModal = document.getElementById('profile-modal');
+            const closeProfile = document.getElementById('close-profile');
+            if (closeProfile) {
+                closeProfile.addEventListener('click', () => {
+                    profileModal.classList.add('hidden');
+                });
+            }
+            window.addEventListener('click', (e) => {
+                if (e.target === profileModal) {
+                    profileModal.classList.add('hidden');
+                }
+            });
+
+        } catch (e) { 
+            console.error("Failed to parse user session", e);
+            localStorage.removeItem('km_user');
+        }
     }
+}
+
+function showProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal || !userProfile) return;
+
+    document.getElementById('profile-name').textContent = userProfile.full_name || '-';
+    document.getElementById('profile-phone').textContent = userProfile.phone || '-';
+    document.getElementById('profile-state').textContent = userProfile.state || 'Not specified';
+    document.getElementById('profile-district').textContent = userProfile.district || 'Not specified';
+    document.getElementById('profile-village').textContent = userProfile.village || 'Not specified';
+    document.getElementById('profile-land').textContent = `${userProfile.land_size || 0} ${userProfile.land_unit || 'acres'}`;
+    document.getElementById('profile-crop').textContent = userProfile.crop_type || 'Not specified';
+    
+    if (userProfile.created_at) {
+        const date = new Date(userProfile.created_at);
+        document.getElementById('profile-joined').textContent = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    modal.classList.remove('hidden');
 }
 
 // ── Auth & data load on DOMContentLoaded ──────────────────────────────────────

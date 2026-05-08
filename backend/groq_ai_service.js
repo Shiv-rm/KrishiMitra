@@ -428,25 +428,32 @@ export async function getDiseaseAdvice(diseaseName) {
 
     try {
         const prompt = `
-You are an expert plant pathologist. A crop has been diagnosed with: "${diseaseName}".
-Provide a concise expert analysis, recommended treatments, and preventive measures.
+You are an expert plant pathologist and agricultural consultant. A diagnosis has been confirmed: "${diseaseName}".
+
+Provide a highly specific and professional analysis of this issue. 
+Your response must include:
+1. "analysis": A clear, concise explanation of the disease/pest, its symptoms, and its impact on the crop.
+2. "treatments": A list of specific, actionable remedies. Include both chemical (if necessary, specify the active ingredient like 'Imidacloprid') and organic/biological options (like 'Neem oil' or 'Trichoderma').
+3. "prevention": Specific cultural practices or preventive measures to avoid recurrence (e.g., crop rotation, specific spacing, resistant varieties).
+
 You MUST provide the response in BOTH English and Hindi.
 
 You MUST respond strictly with valid JSON. Return ONLY the JSON object.
 Format exactly as:
 {
   "en": {
-    "analysis": "English analysis here...",
-    "treatments": ["English treatment 1", "English treatment 2"],
-    "prevention": ["English prevention 1", "English prevention 2"]
+    "analysis": "Specific English analysis...",
+    "treatments": ["Actionable Treatment 1", "Actionable Treatment 2"],
+    "prevention": ["Preventive Measure 1", "Preventive Measure 2"]
   },
   "hi": {
-    "analysis": "Hindi analysis here...",
-    "treatments": ["Hindi treatment 1", "Hindi treatment 2"],
-    "prevention": ["Hindi prevention 1", "Hindi prevention 2"]
+    "analysis": "सटीक हिंदी विश्लेषण...",
+    "treatments": ["उपचार 1", "उपचार 2"],
+    "prevention": ["निवारक उपाय 1", "निवारक उपाय 2"]
   }
 }
 `;
+
 
         const response = await groq.chat.completions.create({
             model: 'llama-3.3-70b-versatile',

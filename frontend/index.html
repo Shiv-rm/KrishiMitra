@@ -21,7 +21,10 @@
     <!-- Top Navigation Bar -->
     <nav class="top-navbar">
         <div class="nav-left">
-            <h1 class="nav-logo">KrishiMitra</h1>
+            <a href="/" class="nav-logo-link">
+                <img src="/logo.png" alt="KrishiMitra" class="nav-logo-img">
+                <span class="nav-logo-text">KrishiMitra</span>
+            </a>
         </div>
         <div class="nav-center">
             <button class="nav-tab active" data-target="tab-predict" data-i18n="tabAnalysis">Crop Analysis</button>
@@ -36,7 +39,9 @@
                 <button class="lang-btn active" id="btn-en" data-lang="en">EN</button>
                 <button class="lang-btn" id="btn-hi" data-lang="hi">हिं</button>
             </div>
-            <a href="./src/components/login/login.html" class="nav-link" id="nav-login" data-i18n="navLogin">Login / Register</a>
+            <div class="user-menu-container" id="user-menu-container">
+                <a href="./src/components/login/login.html" class="nav-link" id="nav-login" data-i18n="navLogin">Login / Register</a>
+            </div>
         </div>
     </nav>
 
@@ -186,7 +191,7 @@
                         data-i18n="pestExpectedTitle">Expected Threats</button>
                     <button class="sub-tab" data-subtarget="subtab-pest-detect" data-i18n="tabPestDetect">Pest
                         Detection</button>
-                    <button class="sub-tab" data-subtarget="subtab-soil-detect">Soil Classification</button>
+                    <!-- <button class="sub-tab" data-subtarget="subtab-soil-detect">Soil Classification</button> -->
                 </div>
 
                 <div class="dashboard-grid" style="display: flex; flex-direction: column; gap: 20px;">
@@ -434,6 +439,53 @@
 
     </div>
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <div id="profile-modal" class="modal hidden">
+        <div class="modal-content profile-card">
+            <div class="modal-header">
+                <h2>User Profile Details</h2>
+                <button id="close-profile" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-section">
+                    <div class="profile-info-grid">
+                        <div class="info-item">
+                            <label>Full Name</label>
+                            <p id="profile-name">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Phone Number</label>
+                            <p id="profile-phone">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>State</label>
+                            <p id="profile-state">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>District</label>
+                            <p id="profile-district">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Village</label>
+                            <p id="profile-village">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Land Details</label>
+                            <p id="profile-land">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Preferred Crop</label>
+                            <p id="profile-crop">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Member Since</label>
+                            <p id="profile-joined">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
     <script type="module" src="/src/chat.js"></script>
 </body>
